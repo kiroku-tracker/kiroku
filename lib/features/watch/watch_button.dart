@@ -88,10 +88,16 @@ class _WatchButtonState extends ConsumerState<WatchButton> {
       alignmentOffset: const Offset(0, 6),
       menuChildren: [
         AppMenuItem(
-          label: 'Открыть на ${source.name}',
+          label: 'Смотреть в Kiroku',
+          icon: LucideIcons.monitorPlay,
+          color: AppColors.menuItemText,
+          onPressed: () => _run(() => watchOnSite(ref, anime, inApp: true)),
+        ),
+        AppMenuItem(
+          label: 'Открыть в браузере',
           icon: LucideIcons.globe,
           color: AppColors.menuItemText,
-          onPressed: () => _run(() => watchOnSite(ref, anime)),
+          onPressed: () => _run(() => watchOnSite(ref, anime, inApp: false)),
         ),
         for (final link in links)
           AppMenuItem(

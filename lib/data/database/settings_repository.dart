@@ -116,6 +116,7 @@ class AppPrefs {
     this.checkUpdates = true,
     this.discord = false,
     this.discordSitesOff = const {},
+    this.watchInApp = false,
   });
 
   factory AppPrefs.fromSettings(Map<String, String> settings) => AppPrefs(
@@ -136,6 +137,7 @@ class AppPrefs {
     autoAdd: settings['autoMark.add'] != 'false',
     checkUpdates: settings['updates.check'] != 'false',
     discord: settings['discord.enabled'] == 'true',
+    watchInApp: settings['watch.inApp'] == 'true',
     discordSitesOff: {
       for (final site in (settings['discord.sitesOff'] ?? '').split('|'))
         if (site.isNotEmpty) site,
@@ -168,6 +170,8 @@ class AppPrefs {
 
   final Set<String> discordSitesOff;
 
+  final bool watchInApp;
+
   YummyHost get effectiveYummyHost => yummyHost ?? YummyHost.ru;
 
   Map<String, String> toSettings() => {
@@ -183,6 +187,7 @@ class AppPrefs {
     'autoMark.add': '$autoAdd',
     'updates.check': '$checkUpdates',
     'discord.enabled': '$discord',
+    'watch.inApp': '$watchInApp',
     'discord.sitesOff': discordSitesOff.join('|'),
   };
 
@@ -200,6 +205,7 @@ class AppPrefs {
     bool? checkUpdates,
     bool? discord,
     Set<String>? discordSitesOff,
+    bool? watchInApp,
   }) => AppPrefs(
     closeToTray: closeToTray ?? this.closeToTray,
     notifyEpisodes: notifyEpisodes ?? this.notifyEpisodes,
@@ -214,6 +220,7 @@ class AppPrefs {
     checkUpdates: checkUpdates ?? this.checkUpdates,
     discord: discord ?? this.discord,
     discordSitesOff: discordSitesOff ?? this.discordSitesOff,
+    watchInApp: watchInApp ?? this.watchInApp,
   );
 }
 

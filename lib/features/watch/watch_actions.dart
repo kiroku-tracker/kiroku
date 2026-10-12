@@ -6,7 +6,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/toast.dart';
 import '../../data/database/app_database.dart';
+import '../../app_section.dart';
 import '../../data/providers.dart';
+import '../player/player_screen.dart';
 
 /// Открывает тайтл для просмотра.
 Future<void> watchTitle(WidgetRef ref, Anime anime) async {
@@ -15,20 +17,20 @@ Future<void> watchTitle(WidgetRef ref, Anime anime) async {
       .watchLinks(anime.id)
       .first;
   if (links.isNotEmpty) {
-    await _open(ref, Uri.parse(links.first.url));
+    await _open(ref, Uri.parse(links.first.url), title: anime.title);
     return;
   }
   await watchOnSite(ref, anime);
 }
 
-/// Открывает тайтл на сайте по умолчанию.
-Future<void> watchOnSite(WidgetRef ref, Anime anime) async {
+/// Открывает тайтл на сайте по умолчанию: в Kiroku или в браузере.
+Future<void> watchOnSite(WidgetRef ref, Anime anime, {bool? inApp}) async {
   final source = ref.read(watchSourceProvider);
   final target = await source.resolve(
     shikimoriId: anime.id,
     title: anime.title,
   );
-  await _open(ref, target.uri);
+  await _open(ref, target.uri, title: anime.title, inApp: inApp);
   if (!target.found) {
     ref
         .read(toastProvider.notifier)
@@ -40,9 +42,18 @@ Future<void> watchOnSite(WidgetRef ref, Anime anime) async {
 }
 
 Future<void> openWatchLink(WidgetRef ref, WatchLink link) =>
-    _open(ref, Uri.parse(link.url));
+    _open(ref, Uri.parse(link.url), title: link.label);
 
-Future<void> _open(WidgetRef ref, Uri uri) async {
+Future<void> _open(
+  WidgetRef ref,
+  Uri uri, {
+  required String title,
+  bool? inApp,
+}) async {
+  if (inApp ?? ref.read(appPrefsProvider).value?.watchInApp ?? false) {
+    openPlayer(ref.read(appSectionProvider), uri, title: title);
+    return;
+  }
   if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
     ref.read(toastProvider.notifier).show('Не удалось открыть $uri');
   }

@@ -14,6 +14,7 @@ import 'features/calendar/calendar_screen.dart';
 import 'features/groups/groups_screen.dart';
 import 'features/journal/journal_screen.dart';
 import 'features/library/library_screen.dart';
+import 'features/player/player_screen.dart';
 import 'features/search/search_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/updates/update_dialog.dart';
@@ -119,12 +120,14 @@ class _AppShellState extends ConsumerState<AppShell> {
           },
           child: Row(
             children: [
-              const _Sidebar(),
-              const VerticalDivider(
-                width: 1,
-                thickness: 1,
-                color: AppColors.divider,
-              ),
+              if (!ref.watch(playerFullScreenProvider)) ...[
+                const _Sidebar(),
+                const VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  color: AppColors.divider,
+                ),
+              ],
               Expanded(
                 child: IndexedStack(
                   index: section.index,

@@ -14,6 +14,7 @@ import '../data/database/watch_status.dart';
 import '../data/providers.dart';
 import '../features/autotrack/auto_marker.dart';
 import '../features/notifications/release_watcher.dart';
+import '../features/player/player_screen.dart';
 import '../features/title/title_screen.dart';
 import 'backups.dart';
 import 'discord_presence.dart';
@@ -270,6 +271,12 @@ class DesktopController with TrayListener, WindowListener {
                   .read(watchSourceProvider)
                   .resolve(shikimoriId: animeId, title: anime.title))
               .uri;
+    final prefs = await _ref.read(appPrefsProvider.future);
+    if (prefs.watchInApp) {
+      await showMainWindow();
+      openPlayer(_ref.read(appSectionProvider), uri, title: anime.title);
+      return;
+    }
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 

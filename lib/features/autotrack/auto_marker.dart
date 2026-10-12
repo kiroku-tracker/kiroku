@@ -64,13 +64,34 @@ class AutoMarker {
   /// Включает или выключает автоотметку.
   Future<void> apply(AppPrefs prefs) => prefs.autoMark ? start() : stop();
 
-  Future<void> _onSnapshot(List sessions) async {
+  MediaSession? _embedded;
+  DateTime? _embeddedAt;
+
+  /// Просмотр во встроенном плеере Kiroku.
+  void reportEmbedded(MediaSession? session) {
+    _embedded = session;
+    _embeddedAt = DateTime.now();
+  }
+
+  Future<void> _onSnapshot(List raw) async {
     final prefs = await _ref.read(appPrefsProvider.future);
     if (!prefs.autoMark) return;
+    final sessions = [
+      for (final item in raw)
+        if (item is Map)
+          if (MediaSession.fromMap(item) case final session
+              when !session.app.toLowerCase().contains('kiroku'))
+            session,
+    ];
+    final embedded = _embedded;
+    final embeddedAt = _embeddedAt;
+    if (embedded != null &&
+        embeddedAt != null &&
+        DateTime.now().difference(embeddedAt) < const Duration(seconds: 8)) {
+      sessions.add(embedded);
+    }
     var seen = false;
-    for (final raw in sessions) {
-      if (raw is! Map) continue;
-      final session = MediaSession.fromMap(raw);
+    for (final session in sessions) {
       final now = recognizeYummy(session);
       if (now == null || session.duration < _minDuration) continue;
       final key = '${session.app}|${session.title}';

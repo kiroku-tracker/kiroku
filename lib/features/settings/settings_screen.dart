@@ -258,6 +258,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                _SettingRow(
+                  title: 'Открывать в Kiroku',
+                  text: '«Смотреть» открывает сайт внутри программы.',
+                  value: prefs.watchInApp,
+                  onChanged: (value) =>
+                      change((prefs) => prefs.copyWith(watchInApp: value)),
+                ),
                 _ChoiceRow(
                   title: 'Сайт для просмотра',
                   text: 'Его открывает «Смотреть». Своя ссылка тайтла важнее.',

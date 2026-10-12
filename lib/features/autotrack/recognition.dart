@@ -91,7 +91,10 @@ Recognized? recognizeYummy(MediaSession session) {
       host ??= page.group(1);
       slug ??= page.group(2);
     }
-    final isPlayer = url.contains('iframeCVH') || url.contains('kodik');
+    final isPlayer =
+        url.contains('iframeCVH') ||
+        url.contains('kodik') ||
+        url.contains('alloha');
     if (!isPlayer) continue;
     player ??= url;
     episode ??= int.tryParse(_episodeParam.firstMatch(url)?.group(1) ?? '');
@@ -120,7 +123,12 @@ bool sameVideo(MediaSession session, double? knownDuration) {
 /// Название тайтла из заголовка вкладки.
 String cleanYummyTitle(String title) {
   var result = title;
-  for (final separator in const [' — смотреть', ' - смотреть', ' | ']) {
+  for (final separator in const [
+    ' — смотреть',
+    ' - смотреть',
+    ' смотреть аниме',
+    ' | ',
+  ]) {
     final index = result.indexOf(separator);
     if (index > 0) result = result.substring(0, index);
   }
