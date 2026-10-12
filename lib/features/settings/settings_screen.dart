@@ -231,20 +231,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 6),
-                Opacity(
-                  opacity: prefs.autoMark ? 1 : 0.45,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _NowPlayingLine(threshold: prefs.autoMarkThreshold),
-                      const _Note(
-                        'Если серия не распознана, Kiroku спросит в '
-                        'уведомлении.',
-                      ),
-                    ],
+                if (prefs.autoMark) ...[
+                  const SizedBox(height: 6),
+                  _NowPlayingLine(threshold: prefs.autoMarkThreshold),
+                  const _Note(
+                    'Если серия не распознана, Kiroku спросит в уведомлении.',
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -325,13 +318,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                     ),
                   ),
-                Opacity(
-                  opacity: prefs.discord ? 1 : 0.45,
-                  child: const _Note(
+                if (prefs.discord)
+                  const _Note(
                     'Группу, франшизу или тайтл можно скрыть в меню «…» на их '
                     'странице.',
                   ),
-                ),
               ],
             ),
           ),
@@ -473,9 +464,7 @@ class _SettingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!enabled) {
-      return IgnorePointer(child: Opacity(opacity: 0.45, child: _row()));
-    }
+    if (!enabled) return const SizedBox.shrink();
     return _row();
   }
 
@@ -621,6 +610,6 @@ class _ChoiceRow extends StatelessWidget {
       ),
     );
     if (enabled) return row;
-    return IgnorePointer(child: Opacity(opacity: 0.45, child: row));
+    return const SizedBox.shrink();
   }
 }
