@@ -15,6 +15,8 @@ import '../data/providers.dart';
 import '../features/autotrack/auto_marker.dart';
 import '../features/notifications/release_watcher.dart';
 import '../features/player/player_screen.dart';
+import '../features/player/watch_choice.dart';
+import '../data/database/franchise_rules.dart';
 import '../features/title/title_screen.dart';
 import 'backups.dart';
 import 'discord_presence.dart';
@@ -273,8 +275,22 @@ class DesktopController with TrayListener, WindowListener {
               .uri;
     final prefs = await _ref.read(appPrefsProvider.future);
     if (prefs.watchInApp) {
+      final items = _ref.read(libraryItemsProvider).value ?? const [];
+      final item = items.where((item) => item.anime.id == animeId).firstOrNull;
+      final key = item == null ? null : franchiseKeyOf(item.entry, item.anime);
+      final franchises = await _ref.read(franchisesProvider.future);
+      final choice = links.isNotEmpty
+          ? null
+          : watchChoice(item, key == null ? null : franchises[key]);
+      final dubbing = choice?.dubbing;
       await showMainWindow();
-      openPlayer(_ref.read(appSectionProvider), uri, title: anime.title);
+      openPlayer(
+        _ref.read(appSectionProvider),
+        uri,
+        title: anime.title,
+        episode: choice?.episode,
+        dubbing: dubbing == null ? null : siteDubbingLabel(dubbing),
+      );
       return;
     }
     await launchUrl(uri, mode: LaunchMode.externalApplication);

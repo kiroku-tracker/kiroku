@@ -8,7 +8,9 @@ import '../../core/toast.dart';
 import '../../data/database/app_database.dart';
 import '../../app_section.dart';
 import '../../data/providers.dart';
+import '../../data/database/franchise_rules.dart';
 import '../player/player_screen.dart';
+import '../player/watch_choice.dart';
 
 /// Открывает тайтл для просмотра.
 Future<void> watchTitle(WidgetRef ref, Anime anime) async {
@@ -30,7 +32,13 @@ Future<void> watchOnSite(WidgetRef ref, Anime anime, {bool? inApp}) async {
     shikimoriId: anime.id,
     title: anime.title,
   );
-  await _open(ref, target.uri, title: anime.title, inApp: inApp);
+  await _open(
+    ref,
+    target.uri,
+    title: anime.title,
+    inApp: inApp,
+    choice: await _choice(ref, anime),
+  );
   if (!target.found) {
     ref
         .read(toastProvider.notifier)
@@ -44,14 +52,32 @@ Future<void> watchOnSite(WidgetRef ref, Anime anime, {bool? inApp}) async {
 Future<void> openWatchLink(WidgetRef ref, WatchLink link) =>
     _open(ref, Uri.parse(link.url), title: link.label);
 
+/// Следующая серия и озвучка тайтла из библиотеки.
+Future<WatchChoice> _choice(WidgetRef ref, Anime anime) async {
+  final items = ref.read(libraryItemsProvider).value ?? const [];
+  final item = items.where((item) => item.anime.id == anime.id).firstOrNull;
+  if (item == null) return (episode: null, dubbing: null);
+  final key = franchiseKeyOf(item.entry, item.anime);
+  final franchises = await ref.read(franchisesProvider.future);
+  return watchChoice(item, key == null ? null : franchises[key]);
+}
+
 Future<void> _open(
   WidgetRef ref,
   Uri uri, {
   required String title,
   bool? inApp,
+  WatchChoice? choice,
 }) async {
   if (inApp ?? ref.read(appPrefsProvider).value?.watchInApp ?? false) {
-    openPlayer(ref.read(appSectionProvider), uri, title: title);
+    final dubbing = choice?.dubbing;
+    openPlayer(
+      ref.read(appSectionProvider),
+      uri,
+      title: title,
+      episode: choice?.episode,
+      dubbing: dubbing == null ? null : siteDubbingLabel(dubbing),
+    );
     return;
   }
   if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {

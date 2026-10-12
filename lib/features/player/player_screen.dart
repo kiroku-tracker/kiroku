@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -65,6 +66,76 @@ const _pageScript = r'''
 })();
 ''';
 
+/// Выбирает на странице тайтла YummyAnime озвучку и серию кнопками сайта.
+String _chooseScript(int? episode, String? dubbing) =>
+    '(function (episode, dubbing) {'
+    r'''
+  function wait(find, done) {
+    var tries = 0;
+    var timer = setInterval(function () {
+      var found = find();
+      if (found || ++tries > 80) { clearInterval(timer); done(found); }
+    }, 250);
+  }
+  function episodeButtons(root) {
+    return Array.prototype.filter.call(
+      root.querySelectorAll('[role=button]'),
+      function (b) { return /^\d+$/.test(b.textContent.trim()); });
+  }
+  var heading = Array.prototype.find.call(
+    document.querySelectorAll('[role=button] h2'),
+    function (h) { return /Смотреть аниме/i.test(h.textContent); });
+  if (heading) heading.scrollIntoView({ block: 'start' });
+  wait(function () {
+    return document.querySelector('input[aria-label="Выберите озвучку"]');
+  }, function (input) {
+    if (!input) return;
+    var box = input;
+    while (box.parentElement && episodeButtons(box).length === 0) {
+      box = box.parentElement;
+    }
+    input.scrollIntoView({ block: 'center' });
+    function chooseEpisode() {
+      if (!episode) return;
+      wait(function () {
+        return episodeButtons(box).find(function (b) {
+          return b.textContent.trim() === String(episode);
+        });
+      }, function (button) { if (button) button.click(); });
+    }
+    if (!dubbing) { chooseEpisode(); return; }
+    var attempts = 0;
+    function openMenu() {
+      input.focus();
+      input.dispatchEvent(new KeyboardEvent('keydown',
+        { key: 'ArrowDown', keyCode: 40, bubbles: true }));
+    }
+    openMenu();
+    wait(function () {
+      if (document.querySelectorAll('[id*=-option-]').length === 0 &&
+          ++attempts % 6 === 0) {
+        openMenu();
+      }
+      return Array.prototype.find.call(
+        document.querySelectorAll('[id*=-option-]'),
+        function (option) {
+          var text = option.textContent.trim();
+          return text.indexOf(dubbing) === 0 &&
+            /^(\d|$)/.test(text.slice(dubbing.length));
+        });
+    }, function (option) {
+      if (option) {
+        option.click();
+      } else {
+        input.dispatchEvent(new KeyboardEvent('keydown',
+          { key: 'Escape', bubbles: true }));
+      }
+      setTimeout(chooseEpisode, 800);
+    });
+  });
+})'''
+    '(${jsonEncode(episode)}, ${jsonEncode(dubbing)});';
+
 /// Видео встроенного просмотра развёрнуто на весь экран.
 class PlayerFullScreenNotifier extends Notifier<bool> {
   @override
@@ -88,20 +159,41 @@ Future<void> _prepareEnvironment() => _environment ??= () async {
 }();
 
 /// Открывает адрес во встроенном просмотре в текущем разделе.
-void openPlayer(AppSection section, Uri uri, {required String title}) {
+void openPlayer(
+  AppSection section,
+  Uri uri, {
+  required String title,
+  int? episode,
+  String? dubbing,
+}) {
   sectionNavigatorKeys[section]?.currentState?.push(
     MaterialPageRoute<void>(
-      builder: (_) => PlayerScreen(uri: uri, title: title),
+      builder: (_) => PlayerScreen(
+        uri: uri,
+        title: title,
+        episode: episode,
+        dubbing: dubbing,
+      ),
     ),
   );
 }
 
 /// Встроенный просмотр сайта.
 class PlayerScreen extends ConsumerStatefulWidget {
-  const PlayerScreen({super.key, required this.uri, required this.title});
+  const PlayerScreen({
+    super.key,
+    required this.uri,
+    required this.title,
+    this.episode,
+    this.dubbing,
+  });
 
   final Uri uri;
   final String title;
+
+  final int? episode;
+
+  final String? dubbing;
 
   @override
   ConsumerState<PlayerScreen> createState() => _PlayerScreenState();
@@ -134,6 +226,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       await _controller.setBackgroundColor(AppColors.background);
       await _controller.addScriptToExecuteOnDocumentCreated(_pageScript);
       _subscriptions.addAll([
+        _controller.loadingState.listen(_onLoadingState),
         _controller.url.listen((url) {
           _reports.clear();
           if (mounted) setState(() => _url = url);
@@ -146,6 +239,21 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     } on Object catch (error) {
       if (mounted) setState(() => _error = '$error');
     }
+  }
+
+  bool _chosen = false;
+
+  /// После первой загрузки страницы тайтла выбирает серию и озвучку.
+  void _onLoadingState(LoadingState state) {
+    if (_chosen || state != LoadingState.navigationCompleted) return;
+    final url = Uri.tryParse(_url ?? '');
+    if (url == null || !url.path.startsWith('/catalog/item/')) return;
+    _chosen = true;
+    if (!url.host.startsWith('ru.')) return;
+    if (widget.episode == null && widget.dubbing == null) return;
+    unawaited(
+      _controller.executeScript(_chooseScript(widget.episode, widget.dubbing)),
+    );
   }
 
   void _onMessage(Object? message) {
