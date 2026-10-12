@@ -48,6 +48,7 @@ abstract final class AppColors {
 
   static const update = Color(0xFF2F7FE0);
   static const updateHover = Color(0xFF4790EA);
+  static const updateText = Color(0xFF6FA8F0);
 
   static const navActive = Color(0xFF25242C);
   static const focus = Color(0xFF9E8CFF);

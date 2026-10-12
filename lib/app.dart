@@ -230,20 +230,32 @@ class _UpdateButton extends ConsumerWidget {
     final releases = ref.watch(updatesProvider);
     if (releases.isEmpty) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Tooltip(
         message: 'Обновить до ${releases.first.version}',
         positionDelegate: _besideIcon,
-        child: SizedBox.square(
-          dimension: 42,
-          child: FilledButton(
-            style: AppTheme.updateButton.copyWith(
-              padding: const WidgetStatePropertyAll(EdgeInsets.zero),
-              minimumSize: const WidgetStatePropertyAll(Size.square(42)),
+        child: IconButton(
+          onPressed: () => showUpdateDialog(context, releases),
+          style: ButtonStyle(
+            fixedSize: const WidgetStatePropertyAll(Size.square(32)),
+            minimumSize: const WidgetStatePropertyAll(Size.square(32)),
+            padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+            shape: const WidgetStatePropertyAll(
+              RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(Radius.circular(11)),
+              ),
             ),
-            onPressed: () => showUpdateDialog(context, releases),
-            child: const Icon(LucideIcons.circleFadingArrowUp, size: 20),
+            side: WidgetStatePropertyAll(
+              BorderSide(color: AppColors.update.withValues(alpha: 0.4)),
+            ),
+            backgroundColor: WidgetStateProperty.resolveWith(
+              (states) => AppColors.update.withValues(
+                alpha: states.contains(WidgetState.hovered) ? 0.2 : 0.1,
+              ),
+            ),
+            foregroundColor: const WidgetStatePropertyAll(AppColors.updateText),
           ),
+          icon: const Icon(LucideIcons.arrowUp, size: 16),
         ),
       ),
     );
