@@ -31,6 +31,8 @@ class AutoMarker {
 
   final _lastRecognized = <String, Recognized>{};
 
+  final _durations = <String, double>{};
+
   final _slugCache = <String, int?>{};
 
   final _learned = <String>{};
@@ -71,6 +73,9 @@ class AutoMarker {
       final session = MediaSession.fromMap(raw);
       final now = recognizeYummy(session);
       if (now == null || session.duration < _minDuration) continue;
+      final key = '${session.app}|${session.title}';
+      if (!sameVideo(session, _durations[key])) continue;
+      if (session.documents.isNotEmpty) _durations[key] = session.duration;
       seen = true;
       if (kDebugMode) {
         debugPrint(
@@ -82,7 +87,6 @@ class AutoMarker {
         );
       }
 
-      final key = '${session.app}|${session.title}';
       final recognized = now.episode != null
           ? (_lastRecognized[key] = now)
           : (_lastRecognized[key] ?? now);

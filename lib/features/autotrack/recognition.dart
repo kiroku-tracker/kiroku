@@ -111,6 +111,12 @@ Recognized? recognizeYummy(MediaSession session) {
   );
 }
 
+/// Видео то же, что было, когда страница сайта была видна.
+bool sameVideo(MediaSession session, double? knownDuration) {
+  if (session.documents.isNotEmpty) return true;
+  return knownDuration != null && (knownDuration - session.duration).abs() <= 2;
+}
+
 /// Название тайтла из заголовка вкладки.
 String cleanYummyTitle(String title) {
   var result = title;

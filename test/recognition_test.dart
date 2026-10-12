@@ -68,4 +68,18 @@ void main() {
       0,
     );
   });
+
+  test('другое видео под старым названием', () {
+    final youtube = MediaSession(
+      app: 'vivaldi.exe',
+      title: _title,
+      status: 4,
+      position: 500,
+      duration: 615,
+    );
+    expect(sameVideo(youtube, 1440), isFalse);
+    expect(sameVideo(youtube, null), isFalse);
+    expect(sameVideo(_session(), 1440), isTrue);
+    expect(sameVideo(_session(urls: [_page]), null), isTrue);
+  });
 }
