@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../discord/discord_menu.dart';
 import '../../core/widgets/app_menu_anchor.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
@@ -399,6 +400,13 @@ class _MoreMenu extends ConsumerWidget {
                 for (final anime in ownedParts) 'a:${anime.id}',
               },
             ),
+          ),
+        if (ownedParts.isNotEmpty)
+          ?discordFranchiseItem(
+            context,
+            ref,
+            franchiseKey: franchiseKey,
+            parts: ownedParts,
           ),
         if (shikimoriId != null)
           AppMenuItem(

@@ -16,6 +16,7 @@ import '../features/autotrack/auto_marker.dart';
 import '../features/notifications/release_watcher.dart';
 import '../features/title/title_screen.dart';
 import 'backups.dart';
+import 'discord_presence.dart';
 import 'notifications.dart';
 import 'updates.dart';
 
@@ -58,6 +59,7 @@ class DesktopController with TrayListener, WindowListener {
 
     _ref.read(releaseWatcherProvider).start();
     _ref.read(updatesProvider.notifier).start();
+    _ref.read(discordPresenceProvider).start();
     unawaited(_backupIfDue());
     _backupTimer = Timer.periodic(
       const Duration(hours: 1),

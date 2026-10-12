@@ -114,6 +114,8 @@ class AppPrefs {
     this.showContinue = true,
     this.autoAdd = true,
     this.checkUpdates = true,
+    this.discord = false,
+    this.discordSitesOff = const {},
   });
 
   factory AppPrefs.fromSettings(Map<String, String> settings) => AppPrefs(
@@ -133,6 +135,11 @@ class AppPrefs {
     showContinue: settings['library.continue'] != 'false',
     autoAdd: settings['autoMark.add'] != 'false',
     checkUpdates: settings['updates.check'] != 'false',
+    discord: settings['discord.enabled'] == 'true',
+    discordSitesOff: {
+      for (final site in (settings['discord.sitesOff'] ?? '').split('|'))
+        if (site.isNotEmpty) site,
+    },
   );
 
   final bool closeToTray;
@@ -157,6 +164,10 @@ class AppPrefs {
 
   final bool checkUpdates;
 
+  final bool discord;
+
+  final Set<String> discordSitesOff;
+
   YummyHost get effectiveYummyHost => yummyHost ?? YummyHost.ru;
 
   Map<String, String> toSettings() => {
@@ -171,6 +182,8 @@ class AppPrefs {
     'library.continue': '$showContinue',
     'autoMark.add': '$autoAdd',
     'updates.check': '$checkUpdates',
+    'discord.enabled': '$discord',
+    'discord.sitesOff': discordSitesOff.join('|'),
   };
 
   AppPrefs copyWith({
@@ -185,6 +198,8 @@ class AppPrefs {
     bool? showContinue,
     bool? autoAdd,
     bool? checkUpdates,
+    bool? discord,
+    Set<String>? discordSitesOff,
   }) => AppPrefs(
     closeToTray: closeToTray ?? this.closeToTray,
     notifyEpisodes: notifyEpisodes ?? this.notifyEpisodes,
@@ -197,6 +212,8 @@ class AppPrefs {
     showContinue: showContinue ?? this.showContinue,
     autoAdd: autoAdd ?? this.autoAdd,
     checkUpdates: checkUpdates ?? this.checkUpdates,
+    discord: discord ?? this.discord,
+    discordSitesOff: discordSitesOff ?? this.discordSitesOff,
   );
 }
 

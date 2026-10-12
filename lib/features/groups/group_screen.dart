@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../discord/discord_menu.dart';
 import '../../core/widgets/app_menu_anchor.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
@@ -144,7 +145,7 @@ class _GroupScreenState extends ConsumerState<GroupScreen> {
                     child: EmptyState(
                       title: 'В группе пока пусто',
                       text:
-                          'Добавить: «⋯» → «Группы…» на странице тайтла или '
+                          'Добавить: «…» → «Группы…» на странице тайтла или '
                           'франшизы.',
                     ),
                   )
@@ -272,6 +273,7 @@ class _MoreMenu extends ConsumerWidget {
             current: view.group.name,
           ),
         ),
+        ?discordGroupItem(context, ref, view),
         const Divider(height: 9, thickness: 1, color: Color(0xFF35323C)),
         AppMenuItem(
           label: 'Удалить группу',

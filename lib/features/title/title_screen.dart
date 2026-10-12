@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../discord/discord_menu.dart';
 import '../../core/widgets/app_menu_anchor.dart';
 import '../../core/labels.dart';
 import '../../core/theme/app_colors.dart';
@@ -460,6 +461,7 @@ class _MoreMenu extends ConsumerWidget {
           color: AppColors.menuItemText,
           onPressed: () => launchUrl(ShikimoriClient.animePage(anime.id)),
         ),
+        ?discordTitleItem(ref, anime: anime, entry: entry),
         if (inLibrary && canRestart)
           AppMenuItem(
             label: 'Начать просмотр заново',

@@ -13,6 +13,7 @@ import '../../core/widgets/select_button.dart';
 import '../../data/database/settings_repository.dart';
 import '../../data/providers.dart';
 import '../../system/autostart.dart';
+import '../../system/discord_presence.dart';
 import '../../system/updates.dart';
 import '../autotrack/auto_marker.dart';
 import '../import/shikimori_import.dart';
@@ -290,6 +291,45 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     labelOf: (host) => host.label,
                     onChanged: (host) =>
                         change((prefs) => prefs.copyWith(yummyHost: host)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          Panel(
+            title: 'Discord',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _SettingRow(
+                  title: 'Отображать просмотр в статусе',
+                  text:
+                      'Тайтл и серия в профиле, пока серия играет. Нужна '
+                      'включённая автоотметка.',
+                  value: prefs.discord,
+                  onChanged: (value) =>
+                      change((prefs) => prefs.copyWith(discord: value)),
+                ),
+                for (final site in discordSites)
+                  _SettingRow(
+                    title: site,
+                    text: 'Просмотр на этом сайте попадает в статус.',
+                    value: !prefs.discordSitesOff.contains(site),
+                    enabled: prefs.discord,
+                    onChanged: (value) => change(
+                      (prefs) => prefs.copyWith(
+                        discordSitesOff: value
+                            ? (prefs.discordSitesOff.toSet()..remove(site))
+                            : {...prefs.discordSitesOff, site},
+                      ),
+                    ),
+                  ),
+                Opacity(
+                  opacity: prefs.discord ? 1 : 0.45,
+                  child: const _Note(
+                    'Группу, франшизу или тайтл можно скрыть в меню «…» на их '
+                    'странице.',
                   ),
                 ),
               ],

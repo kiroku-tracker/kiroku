@@ -117,6 +117,8 @@ class AutoMarker {
               episode: recognized.episode,
               ratio: session.ratio,
               playing: session.playing,
+              position: session.position,
+              duration: session.duration,
             ),
           );
       if (session.ratio * 100 < prefs.autoMarkThreshold) continue;
@@ -380,6 +382,9 @@ class NowPlaying {
     required this.episode,
     required this.ratio,
     required this.playing,
+    this.position = 0,
+    this.duration = 0,
+    this.site = 'YummyAnime',
   });
 
   final int? animeId;
@@ -387,6 +392,9 @@ class NowPlaying {
   final int? episode;
   final double ratio;
   final bool playing;
+  final double position;
+  final double duration;
+  final String site;
 }
 
 class NowPlayingNotifier extends Notifier<NowPlaying?> {
