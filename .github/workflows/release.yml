@@ -1,0 +1,91 @@
+# Выпуск версии из CHANGELOG.md.
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths: [CHANGELOG.md]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Версия из CHANGELOG.md
+        id: version
+        shell: pwsh
+        run: |
+          $lines = Get-Content CHANGELOG.md -Encoding utf8
+          $start = -1
+          for ($i = 0; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match '^##\s+v?(\d+\.\d+\.\d+)\s*$') {
+              $start = $i
+              $version = $Matches[1]
+              break
+            }
+          }
+          if ($start -lt 0) { throw 'В CHANGELOG.md нет раздела вида "## 1.2.3"' }
+          $notes = @()
+          for ($i = $start + 1; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match '^##\s') { break }
+            $notes += $lines[$i]
+          }
+          ($notes -join "`n").Trim() | Set-Content notes.md -Encoding utf8
+          $exists = [bool](git ls-remote --tags origin "refs/tags/v$version")
+          Add-Content $env:GITHUB_OUTPUT "version=$version"
+          Add-Content $env:GITHUB_OUTPUT "exists=$($exists.ToString().ToLower())"
+          if ($exists) { Write-Output "Версия $version уже выпущена" }
+
+      - uses: subosito/flutter-action@v2
+        if: steps.version.outputs.exists == 'false'
+        with:
+          flutter-version: 3.47.7
+          channel: stable
+          cache: true
+
+      - name: Проверки
+        if: steps.version.outputs.exists == 'false'
+        run: |
+          flutter pub get
+          flutter test
+
+      - name: Сборка
+        if: steps.version.outputs.exists == 'false'
+        shell: pwsh
+        run: |
+          flutter build windows --release --no-tree-shake-icons `
+            --build-name=${{ steps.version.outputs.version }} `
+            --build-number=${{ github.run_number }}
+          # Библиотеки Visual C++.
+          foreach ($dll in 'msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll') {
+            Copy-Item "$env:SystemRoot\System32\$dll" build\windows\x64\runner\Release\
+          }
+
+      - name: Установщик
+        if: steps.version.outputs.exists == 'false'
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" `
+            /DAppVersion=${{ steps.version.outputs.version }} `
+            windows\installer\kiroku.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Установщик не собрался' }
+
+      - name: Релиз
+        if: steps.version.outputs.exists == 'false'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = '${{ steps.version.outputs.version }}'
+          gh release create "v$version" "build/installer/Kiroku-Setup-$version.exe" `
+            --title "v$version" --notes-file notes.md --target $env:GITHUB_SHA
