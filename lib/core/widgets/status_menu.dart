@@ -46,7 +46,7 @@ class StatusMenu extends StatelessWidget {
 
     return AppMenuAnchor(
       style: AppTheme.menuStyle,
-      alignmentOffset: const Offset(0, 6),
+      alignmentOffset: const Offset(0, 8),
       menuChildren: [
         for (final action in items)
           Padding(
@@ -124,7 +124,7 @@ class AppMenuItem extends StatelessWidget {
         states.contains(WidgetState.hovered) ||
         states.contains(WidgetState.focused);
 
-    return MenuItemButton(
+    final button = MenuItemButton(
       onPressed: onPressed,
       leadingIcon: icon == null ? null : Icon(icon, size: 18),
       trailingIcon: Icon(
@@ -133,9 +133,9 @@ class AppMenuItem extends StatelessWidget {
         color: checked ? color : Colors.transparent,
       ),
       style: ButtonStyle(
-        minimumSize: const WidgetStatePropertyAll(Size(220, 38)),
+        minimumSize: const WidgetStatePropertyAll(Size(220, 40)),
         padding: const WidgetStatePropertyAll(
-          EdgeInsets.symmetric(horizontal: 10),
+          EdgeInsets.symmetric(horizontal: 14),
         ),
         shape: const WidgetStatePropertyAll(
           RoundedRectangleBorder(
@@ -164,6 +164,10 @@ class AppMenuItem extends StatelessWidget {
         ),
       ),
       child: Text(label),
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: button,
     );
   }
 }

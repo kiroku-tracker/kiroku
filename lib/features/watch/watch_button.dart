@@ -85,7 +85,7 @@ class _WatchButtonState extends ConsumerState<WatchButton> {
 
     final menu = AppMenuAnchor(
       style: AppTheme.menuStyle,
-      alignmentOffset: const Offset(0, 6),
+      alignmentOffset: const Offset(0, 8),
       menuChildren: [
         AppMenuItem(
           label: 'Смотреть в Kiroku',

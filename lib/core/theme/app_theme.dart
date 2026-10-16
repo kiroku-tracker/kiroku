@@ -264,7 +264,7 @@ abstract final class AppTheme {
     surfaceTintColor: WidgetStatePropertyAll(Colors.transparent),
     elevation: WidgetStatePropertyAll(12),
     shadowColor: WidgetStatePropertyAll(Color(0x85000000)),
-    padding: WidgetStatePropertyAll(EdgeInsets.all(7)),
+    padding: WidgetStatePropertyAll(EdgeInsets.all(8)),
     shape: WidgetStatePropertyAll(
       RoundedRectangleBorder(
         borderRadius: BorderRadius.all(Radius.circular(12)),

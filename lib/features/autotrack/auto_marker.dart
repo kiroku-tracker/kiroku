@@ -61,8 +61,9 @@ class AutoMarker {
     await _channel.invokeMethod('stop');
   }
 
-  /// Включает или выключает автоотметку.
-  Future<void> apply(AppPrefs prefs) => prefs.autoMark ? start() : stop();
+  /// Следит за просмотром, если нужна автоотметка или статус в Discord.
+  Future<void> apply(AppPrefs prefs) =>
+      prefs.autoMark || prefs.discord ? start() : stop();
 
   MediaSession? _embedded;
   DateTime? _embeddedAt;
@@ -75,7 +76,7 @@ class AutoMarker {
 
   Future<void> _onSnapshot(List raw) async {
     final prefs = await _ref.read(appPrefsProvider.future);
-    if (!prefs.autoMark) return;
+    if (!prefs.autoMark && !prefs.discord) return;
     final sessions = [
       for (final item in raw)
         if (item is Map)
@@ -123,7 +124,7 @@ class AutoMarker {
       try {
         animeId = recognized.shikimoriId ?? await _idBySlug(recognized.slug);
       } catch (_) {}
-      if (animeId != null && session.playing) {
+      if (prefs.autoMark && animeId != null && session.playing) {
         if (prefs.autoAdd) {
           await _addOnStart(animeId, recognized.title);
         }
@@ -142,7 +143,9 @@ class AutoMarker {
               duration: session.duration,
             ),
           );
-      if (session.ratio * 100 < prefs.autoMarkThreshold) continue;
+      if (!prefs.autoMark || session.ratio * 100 < prefs.autoMarkThreshold) {
+        continue;
+      }
       try {
         await _onWatched(recognized);
       } catch (_) {}

@@ -10,6 +10,7 @@ import '../../core/toast.dart';
 import '../../core/widgets/page_header.dart';
 import '../../core/widgets/panel.dart';
 import '../../core/widgets/select_button.dart';
+import '../../core/widgets/setting_rows.dart';
 import '../../data/database/settings_repository.dart';
 import '../../data/providers.dart';
 import '../../system/autostart.dart';
@@ -17,7 +18,6 @@ import '../../system/discord_presence.dart';
 import '../../system/updates.dart';
 import '../autotrack/auto_marker.dart';
 import '../import/shikimori_import.dart';
-import '../notifications/release_watcher.dart';
 import '../updates/update_dialog.dart';
 import 'data_transfer.dart';
 
@@ -30,7 +30,6 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool? _autostart;
-  bool _checking = false;
   bool _checkingUpdates = false;
 
   @override
@@ -55,20 +54,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           .read(toastProvider.notifier)
           .show('Не удалось изменить автозапуск: $error');
     }
-  }
-
-  Future<void> _checkNow() async {
-    setState(() => _checking = true);
-    final events = await ref.read(releaseWatcherProvider).check();
-    if (!mounted) return;
-    setState(() => _checking = false);
-    ref
-        .read(toastProvider.notifier)
-        .show(
-          events.isEmpty
-              ? 'Новых серий нет'
-              : 'Новое: ${events.length}. Подробности в уведомлениях',
-        );
   }
 
   Future<void> _checkUpdatesNow() async {
@@ -135,66 +120,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const SizedBox(height: 16),
           Panel(
-            title: 'Уведомления',
-            trailing: OutlinedButton.icon(
-              onPressed: _checking ? null : _checkNow,
-              icon: _checking
-                  ? const SizedBox.square(
-                      dimension: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(LucideIcons.refreshCw),
-              label: const Text('Проверить сейчас'),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _SettingRow(
-                  title: 'Новые серии',
-                  text: 'Для «Смотрю» и «Хочу посмотреть». Проверка раз в час.',
-                  value: prefs.notifyEpisodes,
-                  onChanged: (value) =>
-                      change((prefs) => prefs.copyWith(notifyEpisodes: value)),
-                ),
-                _ChoiceRow(
-                  title: 'Когда сообщать о серии',
-                  text:
-                      'Для тайтлов, у которых озвучка не известна. Озвучка '
-                      'запоминается при просмотре или выбирается кнопкой с '
-                      'колокольчиком на странице тайтла.',
-                  enabled: prefs.notifyEpisodes,
-                  control: SelectButton<EpisodeAlert>(
-                    icon: LucideIcons.bellRing,
-                    tooltip: 'Когда сообщать о серии',
-                    value: prefs.episodeAlert,
-                    options: EpisodeAlert.values,
-                    labelOf: (alert) => alert.label,
-                    onChanged: (alert) =>
-                        change((prefs) => prefs.copyWith(episodeAlert: alert)),
-                  ),
-                ),
-                _SettingRow(
-                  title: 'Новые части франшиз',
-                  text: 'Анонс или выход нового сезона.',
-                  value: prefs.notifyFranchises,
-                  onChanged: (value) => change(
-                    (prefs) => prefs.copyWith(notifyFranchises: value),
-                  ),
-                ),
-                const _Note(
-                  'Уведомления одного тайтла выключаются кнопкой с '
-                  'колокольчиком на его странице.',
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 18),
-          Panel(
             title: 'Автоотметка серий',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _SettingRow(
+                SettingRow(
                   title: 'Отмечать серии самостоятельно',
                   text:
                       'Досмотренная серия на YummyAnime отмечается сама. '
@@ -204,22 +134,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   onChanged: (value) =>
                       change((prefs) => prefs.copyWith(autoMark: value)),
                 ),
-                _SettingRow(
+                SettingRow(
                   title: 'Добавлять тайтл в начале просмотра',
                   text:
                       'Если его нет в библиотеке: сразу в «Смотрю». Иначе '
                       'Kiroku спросит, когда серия досмотрена.',
                   value: prefs.autoAdd,
                   enabled: prefs.autoMark,
+                  sub: true,
                   onChanged: (value) =>
                       change((prefs) => prefs.copyWith(autoAdd: value)),
                 ),
-                _ChoiceRow(
+                ChoiceRow(
                   title: 'Порог просмотра',
                   text:
                       'Когда серия считается досмотренной. Титры обычно '
                       'занимают 5–10%.',
                   enabled: prefs.autoMark,
+                  sub: true,
                   control: SelectButton<int>(
                     icon: LucideIcons.gauge,
                     tooltip: 'Порог просмотра',
@@ -234,7 +166,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 if (prefs.autoMark) ...[
                   const SizedBox(height: 6),
                   _NowPlayingLine(threshold: prefs.autoMarkThreshold),
-                  const _Note(
+                  const SettingNote(
                     'Если серия не распознана, Kiroku спросит в уведомлении.',
                   ),
                 ],
@@ -244,7 +176,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 18),
           Panel(
             title: 'Библиотека',
-            child: _SettingRow(
+            child: SettingRow(
               title: 'Блок «Продолжить просмотр»',
               text: 'Тайтлы с непросмотренными сериями над вкладками.',
               value: prefs.showContinue,
@@ -258,16 +190,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _SettingRow(
+                SettingRow(
                   title: 'Открывать в Kiroku',
                   text: '«Смотреть» открывает сайт внутри программы.',
                   value: prefs.watchInApp,
                   onChanged: (value) =>
                       change((prefs) => prefs.copyWith(watchInApp: value)),
                 ),
-                _ChoiceRow(
+                SettingRow(
+                  title: 'Скрывать спойлеры',
+                  text: 'Кадры серии в плеере не видны до запуска видео.',
+                  value: prefs.hideSpoilers,
+                  onChanged: (value) =>
+                      change((prefs) => prefs.copyWith(hideSpoilers: value)),
+                ),
+                ChoiceRow(
                   title: 'Сайт для просмотра',
-                  text: 'Его открывает «Смотреть». Своя ссылка тайтла важнее.',
+                  text:
+                      'Его открывает «Смотреть». Если у тайтла указана своя '
+                      'ссылка, откроется она.',
                   control: SelectButton<String>(
                     icon: LucideIcons.globe,
                     tooltip: 'Сайт для просмотра',
@@ -277,7 +218,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     onChanged: (_) {},
                   ),
                 ),
-                _ChoiceRow(
+                ChoiceRow(
                   title: 'Дизайн YummyAnime',
                   text: prefs.yummyHost == null
                       ? 'Пока новый. Выберется сам при первом просмотре.'
@@ -302,21 +243,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _SettingRow(
+                SettingRow(
                   title: 'Отображать просмотр в статусе',
-                  text:
-                      'Тайтл и серия в профиле, пока серия играет. Нужна '
-                      'включённая автоотметка.',
+                  text: 'Тайтл и серия в профиле, пока серия играет.',
                   value: prefs.discord,
                   onChanged: (value) =>
                       change((prefs) => prefs.copyWith(discord: value)),
                 ),
                 for (final site in discordSites)
-                  _SettingRow(
+                  SettingRow(
                     title: site,
                     text: 'Просмотр на этом сайте попадает в статус.',
                     value: !prefs.discordSitesOff.contains(site),
                     enabled: prefs.discord,
+                    sub: true,
                     onChanged: (value) => change(
                       (prefs) => prefs.copyWith(
                         discordSitesOff: value
@@ -326,7 +266,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                   ),
                 if (prefs.discord)
-                  const _Note(
+                  const SettingNote(
                     'Группу, франшизу или тайтл можно скрыть в меню «…» на их '
                     'странице.',
                   ),
@@ -339,7 +279,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _ChoiceRow(
+                ChoiceRow(
                   title: 'Импорт из Shikimori',
                   text:
                       'Статусы, прогресс, оценки и заметки. По нику, без '
@@ -350,7 +290,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     label: const Text('Импортировать…'),
                   ),
                 ),
-                _ChoiceRow(
+                ChoiceRow(
                   title: 'Резервные копии',
                   text:
                       'Раз в день при запуске. Можно вернуть данные на '
@@ -361,7 +301,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     label: const Text('Копии…'),
                   ),
                 ),
-                _ChoiceRow(
+                ChoiceRow(
                   title: 'Перенос данных',
                   text:
                       'Библиотека, история и настройки одним файлом. '
@@ -392,13 +332,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               children: [
                 if (_autostart != null)
-                  _SettingRow(
+                  SettingRow(
                     title: 'Запускать вместе с Windows',
                     text: 'Сразу в трей, без окна.',
                     value: _autostart!,
                     onChanged: _setAutostart,
                   ),
-                _SettingRow(
+                SettingRow(
                   title: 'Сворачивать в трей при закрытии',
                   text: 'Выход: правый клик по значку в трее.',
                   value: prefs.closeToTray,
@@ -421,7 +361,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   : const Icon(LucideIcons.refreshCw),
               label: const Text('Проверить сейчас'),
             ),
-            child: _SettingRow(
+            child: SettingRow(
               title: 'Проверять обновления',
               text: 'О новой версии сообщит синяя кнопка в боковом меню.',
               value: prefs.checkUpdates,
@@ -429,88 +369,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Пояснение под строками панели.
-class _Note extends StatelessWidget {
-  const _Note(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 10, 8, 0),
-      child: Text(
-        text,
-        style: const TextStyle(color: AppColors.muted, fontSize: 13),
-      ),
-    );
-  }
-}
-
-/// Строка настройки с переключателем.
-class _SettingRow extends StatelessWidget {
-  const _SettingRow({
-    required this.title,
-    required this.text,
-    required this.value,
-    required this.onChanged,
-    this.enabled = true,
-  });
-
-  final String title;
-  final String text;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!enabled) return const SizedBox.shrink();
-    return _row();
-  }
-
-  Widget _row() {
-    return InkWell(
-      onTap: () => onChanged(!value),
-      borderRadius: BorderRadius.circular(10),
-      hoverColor: AppColors.cardHover,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    text,
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 13,
-                      height: 1.4,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 20),
-            Switch(value: value, onChanged: onChanged),
-          ],
-        ),
       ),
     );
   }
@@ -564,59 +422,5 @@ class _NowPlayingLine extends ConsumerWidget {
         ],
       ),
     );
-  }
-}
-
-/// Строка настройки с выбором.
-class _ChoiceRow extends StatelessWidget {
-  const _ChoiceRow({
-    required this.title,
-    required this.text,
-    required this.control,
-    this.enabled = true,
-  });
-
-  final String title;
-  final String text;
-  final Widget control;
-
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    final row = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  text,
-                  style: const TextStyle(
-                    color: AppColors.muted,
-                    fontSize: 13,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 20),
-          control,
-        ],
-      ),
-    );
-    if (enabled) return row;
-    return const SizedBox.shrink();
   }
 }

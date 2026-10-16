@@ -30,7 +30,7 @@ class SelectButton<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppMenuAnchor(
       style: AppTheme.menuStyle,
-      alignmentOffset: const Offset(0, 6),
+      alignmentOffset: const Offset(0, 8),
       menuChildren: [
         for (final option in options)
           AppMenuItem(
