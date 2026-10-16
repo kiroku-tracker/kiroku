@@ -85,6 +85,8 @@ class YummyClient {
               episode: number,
               dubbing: dubbing,
               player: playerKey('${video['iframe_url'] ?? ''}'),
+              siteDubbing: '${(video['data'] as Map)['dubbing'] ?? ''}',
+              sitePlayer: '${(video['data'] as Map)['player'] ?? ''}',
             ),
     ];
   }
@@ -154,6 +156,8 @@ class YummyVideo {
     required this.episode,
     required this.dubbing,
     required this.player,
+    this.siteDubbing = '',
+    this.sitePlayer = '',
   });
 
   final int episode;
@@ -161,4 +165,8 @@ class YummyVideo {
   final String dubbing;
 
   final String? player;
+
+  final String siteDubbing;
+
+  final String sitePlayer;
 }

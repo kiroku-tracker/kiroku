@@ -1,343 +1,179 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_windows/webview_windows.dart';
-import 'package:window_manager/window_manager.dart';
 
 import '../../app_section.dart';
 import '../../core/theme/app_colors.dart';
-import '../autotrack/auto_marker.dart';
-import 'frame_reports.dart';
+import 'player_session.dart';
+import 'site_controls.dart';
 
-/// Скрипт во всех фреймах: видео на странице и известная реклама.
-const _pageScript = r'''
-(function () {
-  if (window.__kiroku) return;
-  window.__kiroku = true;
-  var top = window === window.top;
-  var ads = /adfinity|an\.yandex\.ru|yandex\.ru\/ads|adfox|doubleclick|googlesyndication|adriver|betweendigital|buzzoola|mediasniper/i;
-  function isAd(url) { return ads.test(url || ''); }
-
-  if (!top && isAd(location.href)) {
-    document.documentElement.style.display = 'none';
-    setInterval(function () {
-      document.querySelectorAll('video').forEach(function (v) {
-        v.muted = true;
-        v.pause();
-      });
-    }, 500);
-    return;
-  }
-  function sweep() {
-    document.querySelectorAll('iframe').forEach(function (frame) {
-      if (isAd(frame.src)) frame.remove();
-    });
-  }
-  new MutationObserver(sweep).observe(document, { childList: true, subtree: true });
-
-  function send(message) {
-    if (top) {
-      try { window.chrome.webview.postMessage(message); } catch (e) {}
-    } else {
-      try { window.top.postMessage(message, '*'); } catch (e) {}
-    }
-  }
-  if (top) {
-    window.addEventListener('message', function (e) {
-      if (e.data && e.data.kiroku === 1) send(e.data);
-    });
-  }
-  setInterval(function () {
-    var videos = Array.prototype.map.call(document.querySelectorAll('video'), function (v) {
-      return {
-        time: v.currentTime,
-        duration: isFinite(v.duration) ? v.duration : -1,
-        paused: v.paused,
-        muted: v.muted
-      };
-    });
-    send({ kiroku: 1, url: location.href, title: document.title, top: top, videos: videos });
-  }, 2000);
-})();
-''';
-
-/// Выбирает на странице тайтла YummyAnime озвучку и серию кнопками сайта.
-String _chooseScript(int? episode, String? dubbing) =>
-    '(function (episode, dubbing) {'
-    r'''
-  function wait(find, done) {
-    var tries = 0;
-    var timer = setInterval(function () {
-      var found = find();
-      if (found || ++tries > 80) { clearInterval(timer); done(found); }
-    }, 250);
-  }
-  function episodeButtons(root) {
-    return Array.prototype.filter.call(
-      root.querySelectorAll('[role=button]'),
-      function (b) { return /^\d+$/.test(b.textContent.trim()); });
-  }
-  var heading = Array.prototype.find.call(
-    document.querySelectorAll('[role=button] h2'),
-    function (h) { return /Смотреть аниме/i.test(h.textContent); });
-  if (heading) heading.scrollIntoView({ block: 'start' });
-  wait(function () {
-    return document.querySelector('input[aria-label="Выберите озвучку"]');
-  }, function (input) {
-    if (!input) return;
-    var box = input;
-    while (box.parentElement && episodeButtons(box).length === 0) {
-      box = box.parentElement;
-    }
-    input.scrollIntoView({ block: 'center' });
-    function chooseEpisode() {
-      if (!episode) return;
-      wait(function () {
-        return episodeButtons(box).find(function (b) {
-          return b.textContent.trim() === String(episode);
-        });
-      }, function (button) { if (button) button.click(); });
-    }
-    if (!dubbing) { chooseEpisode(); return; }
-    var attempts = 0;
-    function openMenu() {
-      input.focus();
-      input.dispatchEvent(new KeyboardEvent('keydown',
-        { key: 'ArrowDown', keyCode: 40, bubbles: true }));
-    }
-    openMenu();
-    wait(function () {
-      if (document.querySelectorAll('[id*=-option-]').length === 0 &&
-          ++attempts % 6 === 0) {
-        openMenu();
-      }
-      return Array.prototype.find.call(
-        document.querySelectorAll('[id*=-option-]'),
-        function (option) {
-          var text = option.textContent.trim();
-          return text.indexOf(dubbing) === 0 &&
-            /^(\d|$)/.test(text.slice(dubbing.length));
-        });
-    }, function (option) {
-      if (option) {
-        option.click();
-      } else {
-        input.dispatchEvent(new KeyboardEvent('keydown',
-          { key: 'Escape', bubbles: true }));
-      }
-      setTimeout(chooseEpisode, 800);
-    });
-  });
-})'''
-    '(${jsonEncode(episode)}, ${jsonEncode(dubbing)});';
-
-/// Видео встроенного просмотра развёрнуто на весь экран.
-class PlayerFullScreenNotifier extends Notifier<bool> {
-  @override
-  bool build() => false;
-
-  void set(bool value) => state = value;
-}
-
-final playerFullScreenProvider =
-    NotifierProvider<PlayerFullScreenNotifier, bool>(
-      PlayerFullScreenNotifier.new,
-    );
-
-Future<void>? _environment;
-
-Future<void> _prepareEnvironment() => _environment ??= () async {
-  final support = await getApplicationSupportDirectory();
-  await WebviewController.initializeEnvironment(
-    userDataPath: '${support.path}\\webview',
-  );
-}();
-
-/// Открывает адрес во встроенном просмотре в текущем разделе.
-void openPlayer(
-  AppSection section,
-  Uri uri, {
-  required String title,
-  int? episode,
-  String? dubbing,
-}) {
-  sectionNavigatorKeys[section]?.currentState?.push(
-    MaterialPageRoute<void>(
-      builder: (_) => PlayerScreen(
-        uri: uri,
-        title: title,
-        episode: episode,
-        dubbing: dubbing,
-      ),
-    ),
-  );
-}
-
-/// Встроенный просмотр сайта.
+/// Страница встроенного просмотра.
 class PlayerScreen extends ConsumerStatefulWidget {
-  const PlayerScreen({
-    super.key,
-    required this.uri,
-    required this.title,
-    this.episode,
-    this.dubbing,
-  });
+  const PlayerScreen({super.key, required this.session});
 
-  final Uri uri;
-  final String title;
-
-  final int? episode;
-
-  final String? dubbing;
+  final PlayerSession session;
 
   @override
   ConsumerState<PlayerScreen> createState() => _PlayerScreenState();
 }
 
 class _PlayerScreenState extends ConsumerState<PlayerScreen> {
-  final _controller = WebviewController();
-  final _reports = <String, FrameReport>{};
-  final _subscriptions = <StreamSubscription<Object?>>[];
-  late final AutoMarker _marker;
-  late final PlayerFullScreenNotifier _fullScreen;
-  String? _url;
-  bool _isFullScreen = false;
-  bool _ready = false;
-  String? _error;
+  late final PlayerSessionNotifier _sessions;
+  Route<void>? _route;
 
   @override
   void initState() {
     super.initState();
-    _marker = ref.read(autoMarkerProvider);
-    _fullScreen = ref.read(playerFullScreenProvider.notifier);
-    _start();
+    _sessions = ref.read(playerSessionProvider.notifier);
   }
 
-  Future<void> _start() async {
-    try {
-      await _prepareEnvironment();
-      await _controller.initialize();
-      await _controller.setPopupWindowPolicy(WebviewPopupWindowPolicy.deny);
-      await _controller.setBackgroundColor(AppColors.background);
-      await _controller.addScriptToExecuteOnDocumentCreated(_pageScript);
-      _subscriptions.addAll([
-        _controller.loadingState.listen(_onLoadingState),
-        _controller.url.listen((url) {
-          _reports.clear();
-          if (mounted) setState(() => _url = url);
-        }),
-        _controller.webMessage.listen(_onMessage),
-        _controller.containsFullScreenElementChanged.listen(_setFullScreen),
-      ]);
-      await _controller.loadUrl(widget.uri.toString());
-      if (mounted) setState(() => _ready = true);
-    } on Object catch (error) {
-      if (mounted) setState(() => _error = '$error');
-    }
-  }
-
-  bool _chosen = false;
-
-  /// После первой загрузки страницы тайтла выбирает серию и озвучку.
-  void _onLoadingState(LoadingState state) {
-    if (_chosen || state != LoadingState.navigationCompleted) return;
-    final url = Uri.tryParse(_url ?? '');
-    if (url == null || !url.path.startsWith('/catalog/item/')) return;
-    _chosen = true;
-    if (!url.host.startsWith('ru.')) return;
-    if (widget.episode == null && widget.dubbing == null) return;
-    unawaited(
-      _controller.executeScript(_chooseScript(widget.episode, widget.dubbing)),
-    );
-  }
-
-  void _onMessage(Object? message) {
-    final now = DateTime.now();
-    final report = FrameReport.fromMessage(message, now);
-    if (report == null) return;
-    _reports[report.url] = report;
-    _marker.reportEmbedded(embeddedSession(_reports.values, now: now));
-  }
-
-  Future<void> _setFullScreen(bool value) async {
-    _isFullScreen = value;
-    _fullScreen.set(value);
-    await windowManager.setFullScreen(value);
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _route ??= ModalRoute.of(context);
   }
 
   @override
   void dispose() {
-    for (final subscription in _subscriptions) {
-      subscription.cancel();
-    }
-    _marker.reportEmbedded(null);
-    if (_isFullScreen) {
-      _fullScreen.set(false);
-      unawaited(windowManager.setFullScreen(false));
-    }
-    unawaited(_controller.dispose());
+    final session = widget.session;
+    final route = _route;
+    unawaited(Future.microtask(() => _sessions.pageClosed(session, route)));
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final session = widget.session;
     final fullScreen = ref.watch(playerFullScreenProvider);
-    final error = _error;
-    return Scaffold(
-      body: Column(
-        children: [
-          if (!fullScreen)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-              child: Row(
-                children: [
-                  TextButton.icon(
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    icon: const Icon(LucideIcons.arrowLeft, size: 18),
-                    label: const Text('Назад'),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      widget.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Обновить',
-                    onPressed: _ready ? _controller.reload : null,
-                    icon: const Icon(LucideIcons.refreshCw, size: 18),
-                  ),
-                  const SizedBox(width: 4),
-                  OutlinedButton.icon(
-                    onPressed: () => launchUrl(
-                      Uri.parse(_url ?? widget.uri.toString()),
-                      mode: LaunchMode.externalApplication,
-                    ),
-                    icon: const Icon(LucideIcons.externalLink),
-                    label: const Text('Открыть в браузере'),
-                  ),
-                ],
+    final visible = ref.watch(appSectionProvider) == session.section;
+    return ListenableBuilder(
+      listenable: session,
+      builder: (context, _) {
+        final error = session.error;
+        return Scaffold(
+          body: Column(
+            children: [
+              if (!fullScreen) _topBar(session),
+              if (!fullScreen && session.focus && session.native)
+                SiteControls(
+                  animeId: session.animeId!,
+                  catalog: session.catalog!,
+                  choice: session.site,
+                  onChoose: session.choose,
+                ),
+              Expanded(
+                child: error != null
+                    ? Center(
+                        child: Text(
+                          'Встроенный просмотр недоступен: $error',
+                          style: const TextStyle(color: AppColors.muted),
+                        ),
+                      )
+                    : session.ready && visible
+                    ? LayoutBuilder(
+                        builder: (context, constraints) =>
+                            _view(session, constraints, framed: !fullScreen),
+                      )
+                    : const Center(child: CircularProgressIndicator()),
               ),
-            ),
-          Expanded(
-            child: error != null
-                ? Center(
-                    child: Text(
-                      'Встроенный просмотр недоступен: $error',
-                      style: const TextStyle(color: AppColors.muted),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Сайт с отступами и скруглением; «только плеер» в пропорциях 16:9.
+  Widget _view(
+    PlayerSession session,
+    BoxConstraints constraints, {
+    required bool framed,
+  }) {
+    final padding = framed ? 16.0 : 0.0;
+    var width = constraints.maxWidth - padding * 2;
+    var height = constraints.maxHeight - padding;
+    if (framed && session.focus && session.native) {
+      if (width / height > 16 / 9) {
+        width = height * 16 / 9;
+      } else {
+        height = width * 9 / 16;
+      }
+    }
+    session.viewWidth = width;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(padding, 0, padding, padding),
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(
+          width: width,
+          height: height,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(framed ? 12 : 0),
+            child: Stack(
+              children: [
+                Webview(session.controller),
+                if (session.cover && session.focus)
+                  const Positioned.fill(
+                    child: ColoredBox(
+                      color: AppColors.background,
+                      child: Center(child: CircularProgressIndicator()),
                     ),
-                  )
-                : _ready
-                ? Webview(_controller)
-                : const Center(child: CircularProgressIndicator()),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _topBar(PlayerSession session) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+      child: Row(
+        children: [
+          TextButton.icon(
+            onPressed: () => Navigator.of(context).maybePop(),
+            icon: const Icon(LucideIcons.arrowLeft, size: 18),
+            label: const Text('Назад'),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              session.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          IconButton(
+            tooltip: session.focus ? 'Вся страница' : 'Только плеер',
+            onPressed: session.ready ? session.toggleFocus : null,
+            icon: Icon(
+              session.focus
+                  ? LucideIcons.layoutTemplate
+                  : LucideIcons.monitorPlay,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 4),
+          IconButton(
+            tooltip: 'Обновить',
+            onPressed: session.ready ? session.controller.reload : null,
+            icon: const Icon(LucideIcons.refreshCw, size: 18),
+          ),
+          const SizedBox(width: 4),
+          IconButton(
+            tooltip: 'Открыть в браузере',
+            onPressed: () => launchUrl(
+              Uri.parse(session.url ?? session.uri.toString()),
+              mode: LaunchMode.externalApplication,
+            ),
+            icon: const Icon(LucideIcons.externalLink, size: 18),
           ),
         ],
       ),

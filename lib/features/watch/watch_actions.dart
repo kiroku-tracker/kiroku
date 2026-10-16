@@ -6,10 +6,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/toast.dart';
 import '../../data/database/app_database.dart';
-import '../../app_section.dart';
 import '../../data/providers.dart';
 import '../../data/database/franchise_rules.dart';
-import '../player/player_screen.dart';
+import '../player/player_session.dart';
 import '../player/watch_choice.dart';
 
 /// Открывает тайтл для просмотра.
@@ -38,6 +37,7 @@ Future<void> watchOnSite(WidgetRef ref, Anime anime, {bool? inApp}) async {
     title: anime.title,
     inApp: inApp,
     choice: await _choice(ref, anime),
+    animeId: anime.id,
   );
   if (!target.found) {
     ref
@@ -68,16 +68,19 @@ Future<void> _open(
   required String title,
   bool? inApp,
   WatchChoice? choice,
+  int? animeId,
 }) async {
   if (inApp ?? ref.read(appPrefsProvider).value?.watchInApp ?? false) {
     final dubbing = choice?.dubbing;
-    openPlayer(
-      ref.read(appSectionProvider),
-      uri,
-      title: title,
-      episode: choice?.episode,
-      dubbing: dubbing == null ? null : siteDubbingLabel(dubbing),
-    );
+    ref
+        .read(playerSessionProvider.notifier)
+        .open(
+          uri,
+          title: title,
+          animeId: animeId,
+          episode: choice?.episode,
+          dubbing: dubbing == null ? null : siteDubbingLabel(dubbing),
+        );
     return;
   }
   if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {

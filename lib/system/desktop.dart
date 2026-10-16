@@ -14,7 +14,7 @@ import '../data/database/watch_status.dart';
 import '../data/providers.dart';
 import '../features/autotrack/auto_marker.dart';
 import '../features/notifications/release_watcher.dart';
-import '../features/player/player_screen.dart';
+import '../features/player/player_session.dart';
 import '../features/player/watch_choice.dart';
 import '../data/database/franchise_rules.dart';
 import '../features/title/title_screen.dart';
@@ -284,13 +284,15 @@ class DesktopController with TrayListener, WindowListener {
           : watchChoice(item, key == null ? null : franchises[key]);
       final dubbing = choice?.dubbing;
       await showMainWindow();
-      openPlayer(
-        _ref.read(appSectionProvider),
-        uri,
-        title: anime.title,
-        episode: choice?.episode,
-        dubbing: dubbing == null ? null : siteDubbingLabel(dubbing),
-      );
+      _ref
+          .read(playerSessionProvider.notifier)
+          .open(
+            uri,
+            title: anime.title,
+            animeId: links.isNotEmpty ? null : animeId,
+            episode: choice?.episode,
+            dubbing: dubbing == null ? null : siteDubbingLabel(dubbing),
+          );
       return;
     }
     await launchUrl(uri, mode: LaunchMode.externalApplication);

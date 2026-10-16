@@ -14,7 +14,8 @@ import 'features/calendar/calendar_screen.dart';
 import 'features/groups/groups_screen.dart';
 import 'features/journal/journal_screen.dart';
 import 'features/library/library_screen.dart';
-import 'features/player/player_screen.dart';
+import 'features/player/player_pip.dart';
+import 'features/player/player_session.dart';
 import 'features/search/search_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/updates/update_dialog.dart';
@@ -129,14 +130,19 @@ class _AppShellState extends ConsumerState<AppShell> {
                 ),
               ],
               Expanded(
-                child: IndexedStack(
-                  index: section.index,
+                child: Stack(
                   children: [
-                    for (final entry in _sectionRoots.entries)
-                      _SectionNavigator(
-                        navigatorKey: sectionNavigatorKeys[entry.key]!,
-                        root: entry.value,
-                      ),
+                    IndexedStack(
+                      index: section.index,
+                      children: [
+                        for (final entry in _sectionRoots.entries)
+                          _SectionNavigator(
+                            navigatorKey: sectionNavigatorKeys[entry.key]!,
+                            root: entry.value,
+                          ),
+                      ],
+                    ),
+                    const Positioned.fill(child: PlayerPip()),
                   ],
                 ),
               ),

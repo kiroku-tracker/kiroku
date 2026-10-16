@@ -106,6 +106,8 @@ class AppPrefs {
     this.closeToTray = true,
     this.notifyEpisodes = true,
     this.notifyFranchises = true,
+    this.notifySeasonAnnounce = true,
+    this.notifySeasonStart = true,
     this.trayHintShown = false,
     this.autoMark = true,
     this.autoMarkThreshold = 85,
@@ -117,12 +119,15 @@ class AppPrefs {
     this.discord = false,
     this.discordSitesOff = const {},
     this.watchInApp = false,
+    this.hideSpoilers = true,
   });
 
   factory AppPrefs.fromSettings(Map<String, String> settings) => AppPrefs(
     closeToTray: settings['app.closeToTray'] != 'false',
     notifyEpisodes: settings['notify.episodes'] != 'false',
     notifyFranchises: settings['notify.franchises'] != 'false',
+    notifySeasonAnnounce: settings['notify.seasonAnnounce'] != 'false',
+    notifySeasonStart: settings['notify.seasonStart'] != 'false',
     trayHintShown: settings['app.trayHintShown'] == 'true',
     autoMark: settings['autoMark.enabled'] != 'false',
     autoMarkThreshold: int.tryParse(settings['autoMark.threshold'] ?? '') ?? 85,
@@ -138,6 +143,7 @@ class AppPrefs {
     checkUpdates: settings['updates.check'] != 'false',
     discord: settings['discord.enabled'] == 'true',
     watchInApp: settings['watch.inApp'] == 'true',
+    hideSpoilers: settings['watch.hideSpoilers'] != 'false',
     discordSitesOff: {
       for (final site in (settings['discord.sitesOff'] ?? '').split('|'))
         if (site.isNotEmpty) site,
@@ -149,6 +155,10 @@ class AppPrefs {
   final bool notifyEpisodes;
 
   final bool notifyFranchises;
+
+  final bool notifySeasonAnnounce;
+
+  final bool notifySeasonStart;
 
   final bool trayHintShown;
 
@@ -172,12 +182,16 @@ class AppPrefs {
 
   final bool watchInApp;
 
+  final bool hideSpoilers;
+
   YummyHost get effectiveYummyHost => yummyHost ?? YummyHost.ru;
 
   Map<String, String> toSettings() => {
     'app.closeToTray': '$closeToTray',
     'notify.episodes': '$notifyEpisodes',
     'notify.franchises': '$notifyFranchises',
+    'notify.seasonAnnounce': '$notifySeasonAnnounce',
+    'notify.seasonStart': '$notifySeasonStart',
     'app.trayHintShown': '$trayHintShown',
     'autoMark.enabled': '$autoMark',
     'autoMark.threshold': '$autoMarkThreshold',
@@ -188,6 +202,7 @@ class AppPrefs {
     'updates.check': '$checkUpdates',
     'discord.enabled': '$discord',
     'watch.inApp': '$watchInApp',
+    'watch.hideSpoilers': '$hideSpoilers',
     'discord.sitesOff': discordSitesOff.join('|'),
   };
 
@@ -195,6 +210,8 @@ class AppPrefs {
     bool? closeToTray,
     bool? notifyEpisodes,
     bool? notifyFranchises,
+    bool? notifySeasonAnnounce,
+    bool? notifySeasonStart,
     bool? trayHintShown,
     bool? autoMark,
     int? autoMarkThreshold,
@@ -206,10 +223,13 @@ class AppPrefs {
     bool? discord,
     Set<String>? discordSitesOff,
     bool? watchInApp,
+    bool? hideSpoilers,
   }) => AppPrefs(
     closeToTray: closeToTray ?? this.closeToTray,
     notifyEpisodes: notifyEpisodes ?? this.notifyEpisodes,
     notifyFranchises: notifyFranchises ?? this.notifyFranchises,
+    notifySeasonAnnounce: notifySeasonAnnounce ?? this.notifySeasonAnnounce,
+    notifySeasonStart: notifySeasonStart ?? this.notifySeasonStart,
     trayHintShown: trayHintShown ?? this.trayHintShown,
     autoMark: autoMark ?? this.autoMark,
     autoMarkThreshold: autoMarkThreshold ?? this.autoMarkThreshold,
@@ -221,6 +241,7 @@ class AppPrefs {
     discord: discord ?? this.discord,
     discordSitesOff: discordSitesOff ?? this.discordSitesOff,
     watchInApp: watchInApp ?? this.watchInApp,
+    hideSpoilers: hideSpoilers ?? this.hideSpoilers,
   );
 }
 
