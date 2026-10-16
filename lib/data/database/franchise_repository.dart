@@ -13,6 +13,9 @@ class FranchiseRepository {
 
   static const refreshAfter = Duration(days: 2);
 
+  /// Как часто проверять франшизу с анонсом.
+  static const refreshAnnounced = Duration(hours: 6);
+
   /// Франшизы по ключу.
   Stream<Map<String, Franchise>> watchFranchises() => _db
       .select(_db.franchises)
@@ -55,10 +58,21 @@ class FranchiseRepository {
       for (final row in await _db.select(_db.franchises).get())
         row.key: row.partsLoadedAt,
     };
+    final announced = {
+      for (final anime in await (_db.select(
+        _db.animes,
+      )..where((anime) => anime.releaseStatus.equals('anons'))).get())
+        ?anime.franchise,
+    };
     final now = DateTime.now();
     return [
       for (final MapEntry(:key, value: ids) in byKey.entries)
-        if (_isStale(loaded[key], now)) ids.first,
+        if (_isStale(
+          loaded[key],
+          now,
+          after: announced.contains(key) ? refreshAnnounced : refreshAfter,
+        ))
+          ids.first,
     ];
   }
 
@@ -70,11 +84,14 @@ class FranchiseRepository {
     return _isStale(row?.partsLoadedAt, DateTime.now());
   }
 
-  static bool _isStale(DateTime? loadedAt, DateTime now) =>
-      loadedAt == null || now.difference(loadedAt) > refreshAfter;
+  static bool _isStale(
+    DateTime? loadedAt,
+    DateTime now, {
+    Duration after = refreshAfter,
+  }) => loadedAt == null || now.difference(loadedAt) > after;
 
   /// Сохраняет части франшизы и возвращает новые.
-  Future<List<Anime>> saveParts(FranchiseParts data) {
+  Future<List<Anime>> saveParts(FranchiseParts data, {bool fresh = false}) {
     return _db.transaction(() async {
       final ids = [for (final part in data.parts) part.id];
       final previous = await (_db.select(
@@ -125,7 +142,7 @@ class FranchiseRepository {
               updatedAt: Value(now),
             ),
           );
-      if (previous?.partsLoadedAt == null) return const <Anime>[];
+      if (previous?.partsLoadedAt == null && !fresh) return const <Anime>[];
       return [
         for (final part in parts)
           if (!known.contains(part.id)) part,
@@ -139,6 +156,18 @@ class FranchiseRepository {
   /// Меняет обложку франшизы.
   Future<Future<void> Function()> setCover(String key, int? animeId) =>
       _editRow(key, (now) => FranchisesCompanion(coverAnimeId: Value(animeId)));
+
+  /// Включает или выключает уведомления о сезонах отдельно от общей
+  /// настройки.
+  Future<Future<void> Function()> setAlerts(
+    String key, {
+    required bool muted,
+    required bool alertsOn,
+  }) => _editRow(
+    key,
+    (now) =>
+        FranchisesCompanion(muted: Value(muted), alertsOn: Value(alertsOn)),
+  );
 
   /// Меняет озвучку франшизы.
   Future<Future<void> Function()> setDubbing(String key, String? dubbing) =>

@@ -9,6 +9,7 @@ import '../../core/theme/app_colors.dart';
 import '../../data/database/app_database.dart';
 import '../../data/database/status_action.dart';
 import '../../data/providers.dart';
+import '../notifications/release_watcher.dart';
 import '../../data/shikimori/anime_info.dart';
 import '../franchise/franchise_screen.dart';
 import '../franchise/watch_order_list.dart';

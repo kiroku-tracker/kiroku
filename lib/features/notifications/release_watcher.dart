@@ -6,11 +6,13 @@ import '../../data/database/app_database.dart';
 import '../../data/database/franchise_rules.dart';
 import '../../data/database/settings_repository.dart';
 import '../../data/providers.dart';
+import '../../data/shikimori/shikimori_client.dart';
 import '../../data/watch/dubbing_rules.dart';
 import '../../system/notifications.dart';
+import 'alert_rules.dart';
 import 'release_events.dart';
 
-/// Проверка новых серий.
+/// Проверка новых серий и сезонов.
 class ReleaseWatcher {
   ReleaseWatcher(this._ref);
 
@@ -44,13 +46,20 @@ class ReleaseWatcher {
 
     try {
       final ids = await library.idsToRefresh();
+      final fresh = <String>{};
       if (ids.isNotEmpty) {
-        final tracked = await library.trackedIds();
+        final tracked = await library.trackedIds(
+          byDefault: prefs.notifyEpisodes,
+        );
         final before = await library.animesByIds(ids);
         for (final info in await shikimori.getAnimes(ids)) {
           final old = before[info.id];
           if (old != null && tracked.contains(info.id)) {
             events.addAll(releaseEvents(old, info));
+          }
+          final key = info.franchise ?? '';
+          if (old != null && (old.franchise ?? '').isEmpty && key.isNotEmpty) {
+            fresh.add(key);
           }
           await library.saveAnime(info);
         }
@@ -59,10 +68,8 @@ class ReleaseWatcher {
       for (final animeId in await franchises.franchisesToLoad()) {
         final parts = await shikimori.getFranchise(animeId);
         if (parts == null) continue;
-        final added = await franchises.saveParts(parts);
-        if (added.isEmpty) continue;
         events.addAll(
-          await _newParts(parts.key, {for (final a in added) a.id}),
+          await saveFranchise(parts, fresh: fresh.contains(parts.key)),
         );
       }
     } catch (_) {}
@@ -73,14 +80,26 @@ class ReleaseWatcher {
     final shown = [
       for (final event in events)
         if (switch (event) {
-          NewFranchisePart() => prefs.notifyFranchises,
-          EpisodesOnSite() => prefs.notifyEpisodes,
-          _ => prefs.notifyEpisodes && !bySite.contains(event.animeId),
+          NewFranchisePart() || SeasonStarted() || EpisodesOnSite() => true,
+          _ => !bySite.contains(event.animeId),
         })
           event,
     ];
-    await _notify(shown);
+    await _deliver(shown);
     return shown;
+  }
+
+  /// Загружает франшизу со страницы и сообщает о новых сезонах.
+  Future<void> loadFranchise(String key) async {
+    if (isCustomFranchise(key)) return;
+    final franchises = _ref.read(franchiseRepositoryProvider);
+    if (!await franchises.needsLoading(key)) return;
+    final parts = await franchises.watchParts(key).first;
+    if (parts.isEmpty) return;
+    final loaded = await _ref
+        .read(shikimoriClientProvider)
+        .getFranchise(parts.first.id);
+    if (loaded != null) await _deliver(await saveFranchise(loaded));
   }
 
   /// Новые серии на YummyAnime.
@@ -90,7 +109,7 @@ class ReleaseWatcher {
   ) async {
     final library = _ref.read(libraryRepositoryProvider);
     final site = _ref.read(siteEpisodesRepositoryProvider);
-    final tracked = await library.trackedIds();
+    final tracked = await library.trackedIds(byDefault: prefs.notifyEpisodes);
     final franchises = await _ref
         .read(franchiseRepositoryProvider)
         .watchFranchises()
@@ -128,37 +147,82 @@ class ReleaseWatcher {
     return events;
   }
 
-  /// Новые части франшизы.
-  Future<List<NewFranchisePart>> _newParts(String key, Set<int> added) async {
+  /// Сохраняет части франшизы и возвращает новости о её сезонах.
+  Future<List<ReleaseEvent>> saveFranchise(
+    FranchiseParts parts, {
+    bool fresh = false,
+  }) async {
+    final repository = _ref.read(franchiseRepositoryProvider);
+    final added = await repository.saveParts(parts, fresh: fresh);
+    return _seasonEvents(parts.key, {for (final part in added) part.id});
+  }
+
+  /// Анонсы и начало показа частей франшизы, которых нет в библиотеке.
+  Future<List<ReleaseEvent>> _seasonEvents(String key, Set<int> added) async {
     final repository = _ref.read(franchiseRepositoryProvider);
     final library = _ref.read(libraryRepositoryProvider);
+    final settings = _ref.read(settingsRepositoryProvider);
+    final prefs = await _ref.read(appPrefsProvider.future);
     final items = await library.watchItems().first;
     final own = [
       for (final item in items)
         if (franchiseKeyOf(item.entry, item.anime) == key) item,
     ];
-    if (own.isEmpty || own.every((item) => item.entry.muted)) return const [];
+    if (own.isEmpty) return const [];
+
+    final row = (await repository.watchFranchises().first)[key];
+    final on = seasonAlerts(row, prefs);
+    final separately = row?.alertsOn ?? false;
+    final announce = on && (separately || prefs.notifySeasonAnnounce);
+    final start = on && (separately || prefs.notifySeasonStart);
 
     final order = buildWatchOrder(
       await repository.watchParts(key).first,
       await repository.watchRelations(key).first,
     );
-    final row = (await repository.watchFranchises().first)[key];
     final name = franchiseName(row, own);
     final owned = {for (final item in items) item.anime.id};
-    return [
-      for (final part in order.main)
-        if (added.contains(part.id) &&
-            !owned.contains(part.id) &&
-            (part.releaseStatus == 'anons' || part.releaseStatus == 'ongoing'))
-          NewFranchisePart(
-            animeId: part.id,
-            title: part.title,
-            franchise: name,
-            releaseStatus: part.releaseStatus,
-            airedOn: part.airedOn,
-          ),
-    ];
+    final saved = await settings.readAll();
+    final events = <ReleaseEvent>[];
+    for (final part in order.main) {
+      final status = part.releaseStatus;
+      if (owned.contains(part.id) || status == null) continue;
+      final was = saved['season.${part.id}'];
+      if (status != was) await settings.write('season.${part.id}', status);
+      if (added.contains(part.id)) {
+        if ((status == 'anons' && announce) || (status == 'ongoing' && start)) {
+          events.add(
+            NewFranchisePart(
+              animeId: part.id,
+              title: part.title,
+              franchise: name,
+              releaseStatus: status,
+              airedOn: part.airedOn,
+            ),
+          );
+        }
+      } else if (was == 'anons' && status != 'anons' && start) {
+        events.add(
+          SeasonStarted(animeId: part.id, title: part.title, franchise: name),
+        );
+      }
+    }
+    return events;
+  }
+
+  /// Сохраняет уведомления в центр уведомлений и показывает их.
+  Future<void> _deliver(List<ReleaseEvent> events) async {
+    if (events.isEmpty) return;
+    await _ref.read(noticesRepositoryProvider).add([
+      for (final event in events)
+        (
+          category: NoticeCategory.of(event).name,
+          animeId: event.animeId,
+          title: notificationText(event).title,
+          body: notificationText(event).body,
+        ),
+    ]);
+    await _notify(events);
   }
 
   Future<void> _notify(List<ReleaseEvent> events) async {
@@ -179,7 +243,7 @@ class ReleaseWatcher {
         body: text.body,
         command: NotificationCommand.openTitle(event.animeId),
         buttons: [
-          if (event is NewFranchisePart)
+          if (event is NewFranchisePart || event is SeasonStarted)
             NotificationButton(
               command: NotificationCommand.planTitle(event.animeId),
               label: 'В «Хочу посмотреть»',
@@ -213,3 +277,8 @@ final releaseWatcherProvider = Provider<ReleaseWatcher>((ref) {
   ref.onDispose(watcher.stop);
   return watcher;
 });
+
+/// Загрузка частей франшизы для её страницы.
+final franchiseLoadProvider = FutureProvider.family<void, String>(
+  (ref, key) => ref.read(releaseWatcherProvider).loadFranchise(key),
+);

@@ -222,6 +222,7 @@ void main() {
         addedAt: DateTime(2026),
         updatedAt: DateTime(2026),
         muted: false,
+        alertsOn: false,
       ),
       anime: Anime(
         id: info.id,
@@ -323,11 +324,14 @@ void main() {
         addedAt: DateTime(2026),
         updatedAt: DateTime(2026),
         muted: false,
+        alertsOn: false,
         dubbing: dubbing,
         dubbingSeen: seen,
       );
       Franchise franchise({String? dubbing, String? seen}) => Franchise(
         key: 'f',
+        muted: false,
+        alertsOn: false,
         dubbing: dubbing,
         dubbingSeen: seen,
         updatedAt: DateTime(2026),

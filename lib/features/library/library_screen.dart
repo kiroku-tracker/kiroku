@@ -18,6 +18,7 @@ import '../../data/database/watch_status.dart';
 import '../../data/providers.dart';
 import '../franchise/franchise_card.dart';
 import '../import/shikimori_import.dart';
+import '../notifications/notice_center.dart';
 import '../title/title_screen.dart';
 import 'continue_watching.dart';
 import 'entry_status_button.dart';
@@ -75,7 +76,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
             padding: padding,
             child: Column(
               children: [
-                const PageHeader(title: 'Библиотека'),
+                const PageHeader(
+                  title: 'Библиотека',
+                  trailing: NoticesButton(),
+                ),
                 const SizedBox(height: 18),
                 EmptyState(
                   title: 'Библиотека пока пустая',
@@ -131,7 +135,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const PageHeader(title: 'Библиотека'),
+                        const PageHeader(
+                          title: 'Библиотека',
+                          trailing: NoticesButton(),
+                        ),
                         const SizedBox(height: 18),
                         if (continueItems.isNotEmpty) ...[
                           ContinueWatching(items: continueItems),

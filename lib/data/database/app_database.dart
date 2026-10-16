@@ -54,6 +54,8 @@ class LibraryEntries extends Table {
 
   BoolColumn get muted => boolean().withDefault(const Constant(false))();
 
+  BoolColumn get alertsOn => boolean().withDefault(const Constant(false))();
+
   TextColumn get dubbing => text().nullable()();
 
   TextColumn get dubbingSeen => text().nullable()();
@@ -126,6 +128,10 @@ class Franchises extends Table {
   TextColumn get dubbing => text().nullable()();
 
   TextColumn get dubbingSeen => text().nullable()();
+
+  BoolColumn get muted => boolean().withDefault(const Constant(false))();
+
+  BoolColumn get alertsOn => boolean().withDefault(const Constant(false))();
   DateTimeColumn get partsLoadedAt => dateTime().nullable()();
   DateTimeColumn get updatedAt => dateTime()();
 
@@ -209,6 +215,18 @@ class SiteEpisodes extends Table {
   Set<Column> get primaryKey => {animeId, dubbing};
 }
 
+/// Уведомления в центре уведомлений.
+class Notices extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  TextColumn get category => text()();
+  IntColumn get animeId => integer()();
+  TextColumn get title => text()();
+  TextColumn get body => text()();
+  DateTimeColumn get createdAt => dateTime()();
+  BoolColumn get read => boolean().withDefault(const Constant(false))();
+}
+
 @DriftDatabase(
   tables: [
     Animes,
@@ -224,6 +242,7 @@ class SiteEpisodes extends Table {
     WatchQueueItems,
     WatchLinks,
     SiteEpisodes,
+    Notices,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -232,7 +251,7 @@ class AppDatabase extends _$AppDatabase {
   @override
   int get schemaVersion => currentSchema;
 
-  static const currentSchema = 8;
+  static const currentSchema = 9;
 
   static const fileName = 'kiroku';
 
@@ -281,6 +300,12 @@ class AppDatabase extends _$AppDatabase {
         await migrator.addColumn(libraryEntries, libraryEntries.dubbingSeen);
         await migrator.addColumn(franchises, franchises.dubbing);
         await migrator.addColumn(franchises, franchises.dubbingSeen);
+      }
+      if (from < 9) {
+        await migrator.addColumn(libraryEntries, libraryEntries.alertsOn);
+        await migrator.addColumn(franchises, franchises.muted);
+        await migrator.addColumn(franchises, franchises.alertsOn);
+        await migrator.createTable(notices);
       }
     },
     beforeOpen: (details) async {

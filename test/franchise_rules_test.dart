@@ -44,6 +44,7 @@ LibraryItem _item(
     updatedAt: DateTime(2026, 1, updatedDay),
     franchiseOverride: override,
     muted: false,
+    alertsOn: false,
   ),
   anime: anime,
 );

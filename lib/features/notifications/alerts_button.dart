@@ -6,9 +6,9 @@ import '../../core/theme/app_colors.dart';
 import '../../data/database/app_database.dart';
 import '../../data/database/franchise_rules.dart';
 import '../../data/database/settings_repository.dart';
-import '../../data/database/watch_status.dart';
 import '../../data/providers.dart';
 import '../../data/watch/dubbing_rules.dart';
+import 'alert_rules.dart';
 import 'dubbing_dialogs.dart';
 
 /// Кнопка уведомлений тайтла.
@@ -30,15 +30,13 @@ class TitleAlertsButton extends ConsumerWidget {
       entry,
       franchises[franchiseKeyOf(entry, anime)],
     );
-    final status = WatchStatus.fromName(entry.status);
-    final tracked =
-        status == WatchStatus.watching || status == WatchStatus.planned;
+    final on = episodeAlerts(entry, prefs);
 
     final String label;
     final String tooltip;
-    if (entry.muted) {
+    if (!on) {
       label = 'Без уведомлений';
-      tooltip = 'Уведомления выключены';
+      tooltip = 'Уведомления о новых сериях выключены';
     } else if (choice != null) {
       label = choice.name;
       tooltip = switch (choice.source) {
@@ -54,13 +52,10 @@ class TitleAlertsButton extends ConsumerWidget {
     }
 
     return _AlertsChip(
-      icon: entry.muted ? LucideIcons.bellOff : LucideIcons.bell,
+      icon: on ? LucideIcons.bell : LucideIcons.bellOff,
       label: label,
-      tooltip: tracked
-          ? tooltip
-          : '$tooltip. Уведомления только для «Смотрю» и '
-                '«Хочу посмотреть».',
-      dimmed: entry.muted || !tracked,
+      tooltip: tooltip,
+      dimmed: !on,
       onPressed: () =>
           showTitleDubbingDialog(context, anime: anime, entry: entry),
     );
@@ -101,10 +96,11 @@ class FranchiseAlertsButton extends ConsumerWidget {
       tooltip = 'Озвучка не известна, уведомления по общей настройке';
     }
 
+    final on = seasonAlerts(franchise, prefs);
     return _AlertsChip(
-      icon: LucideIcons.bell,
+      icon: on ? LucideIcons.bell : LucideIcons.bellOff,
       label: label,
-      tooltip: tooltip,
+      tooltip: on ? tooltip : '$tooltip. О новых сезонах не сообщать',
       onPressed: () => showFranchiseDubbingDialog(
         context,
         franchiseKey: franchiseKey,

@@ -6,6 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/widgets/panel.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
+import '../notifications/release_watcher.dart';
 import 'franchise_screen.dart';
 import 'watch_order_list.dart';
 

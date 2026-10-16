@@ -213,3 +213,19 @@ String episodeRanges(List<int> episodes) {
 String episodesWord(List<int> episodes) => {...episodes}.length == 1
     ? 'Серия ${episodes.first}'
     : 'Серии ${episodeRanges(episodes)}';
+
+/// Сколько времени прошло: «5 мин назад», «вчера», «12 окт».
+String timeAgo(DateTime value, {DateTime? now}) {
+  final current = now ?? DateTime.now();
+  final local = value.toLocal();
+  final passed = current.difference(local);
+  if (passed.inMinutes < 1) return 'сейчас';
+  if (passed.inMinutes < 60) return '${passed.inMinutes} мин назад';
+  final today = DateTime(current.year, current.month, current.day);
+  final day = DateTime(local.year, local.month, local.day);
+  final days = today.difference(day).inDays;
+  if (days == 0) return '${passed.inHours} ч назад';
+  if (days == 1) return 'вчера';
+  final year = local.year == current.year ? '' : ' ${local.year}';
+  return '${formatDayMonth(local)}$year';
+}

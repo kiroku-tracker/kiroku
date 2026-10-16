@@ -11,6 +11,7 @@ import '../../data/database/settings_repository.dart';
 import '../../data/providers.dart';
 import '../../data/watch/dubbing_rules.dart';
 import '../../data/watch/site_episodes_repository.dart';
+import 'alert_rules.dart';
 
 const _explanation =
     'Уведомление придёт, когда серия выйдет на YummyAnime в этой озвучке. '
@@ -42,10 +43,14 @@ class _TitleDubbingDialog extends ConsumerWidget {
       franchise,
     );
     final library = ref.read(libraryRepositoryProvider);
+    final on = episodeAlerts(entry, prefs);
+    final byDefault = episodeAlertsByDefault(entry, prefs);
     return _DubbingDialog(
       title: 'Уведомления: ${anime.title}',
       current: entry.dubbing,
-      muted: entry.muted,
+      alerts: on,
+      alertsByDefault: byDefault,
+      alertsTitle: 'Уведомлять о новых сериях',
       autoDetail: switch (auto?.source) {
         null => 'пока не известна',
         DubbingSource.franchise => 'как у франшизы: ${auto!.name}',
@@ -59,29 +64,38 @@ class _TitleDubbingDialog extends ConsumerWidget {
         await site.refresh(anime.id);
         return (await site.read(anime.id)).byDubbing;
       },
-      onSave: (value, muted) async {
-        final before = (dubbing: entry.dubbing, muted: entry.muted);
+      onSave: (value, alerts) async {
         final changes = <String>[];
-        if (value != before.dubbing) {
+        if (value != entry.dubbing) {
           await library.setDubbing(anime.id, value);
           changes.add(_describe(value));
         }
-        if (muted != null && muted != before.muted) {
-          await library.setMuted(anime.id, muted);
+        final alertsChanged = alerts != null && alerts != on;
+        if (alertsChanged) {
+          final flags = alertFlags(on: alerts, byDefault: byDefault);
+          await library.setAlerts(
+            anime.id,
+            muted: flags.muted,
+            alertsOn: flags.alertsOn,
+          );
           changes.add(
-            muted
-                ? 'уведомлений о сериях не будет'
-                : 'уведомления о сериях включены',
+            alerts
+                ? 'уведомления о сериях включены'
+                : 'уведомлений о сериях не будет',
           );
         }
         return (
           text: '«${anime.title}»: ${changes.join(', ')}',
           undo: () async {
-            if (value != before.dubbing) {
-              await library.setDubbing(anime.id, before.dubbing);
+            if (value != entry.dubbing) {
+              await library.setDubbing(anime.id, entry.dubbing);
             }
-            if (muted != null && muted != before.muted) {
-              await library.setMuted(anime.id, before.muted);
+            if (alertsChanged) {
+              await library.setAlerts(
+                anime.id,
+                muted: entry.muted,
+                alertsOn: entry.alertsOn,
+              );
             }
           },
         );
@@ -124,8 +138,12 @@ class _FranchiseDubbingDialog extends ConsumerWidget {
     final prefs = ref.watch(appPrefsProvider).value ?? const AppPrefs();
     final repository = ref.read(franchiseRepositoryProvider);
     final seen = franchise?.dubbingSeen;
+    final on = seasonAlerts(franchise, prefs);
     return _DubbingDialog(
-      title: 'Озвучка франшизы: $name',
+      title: 'Уведомления: $name',
+      alerts: on,
+      alertsByDefault: prefs.notifyFranchises,
+      alertsTitle: 'Уведомлять о новых сезонах',
       note: 'Для всех частей. Озвучка, выбранная у части, важнее.',
       current: franchise?.dubbing,
       autoDetail: seen == null ? 'пока не известна' : 'по просмотру: $seen',
@@ -145,9 +163,37 @@ class _FranchiseDubbingDialog extends ConsumerWidget {
         }
         return result;
       },
-      onSave: (value, _) async {
-        final undo = await repository.setDubbing(franchiseKey, value);
-        return (text: 'Франшиза «$name»: ${_describe(value)}', undo: undo);
+      onSave: (value, alerts) async {
+        final undos = <Future<void> Function()>[];
+        final changes = <String>[];
+        if (value != franchise?.dubbing) {
+          undos.add(await repository.setDubbing(franchiseKey, value));
+          changes.add(_describe(value));
+        }
+        if (alerts != null && alerts != on) {
+          final flags = alertFlags(
+            on: alerts,
+            byDefault: prefs.notifyFranchises,
+          );
+          undos.add(
+            await repository.setAlerts(
+              franchiseKey,
+              muted: flags.muted,
+              alertsOn: flags.alertsOn,
+            ),
+          );
+          changes.add(
+            alerts ? 'о новых сезонах сообщать' : 'о новых сезонах не сообщать',
+          );
+        }
+        return (
+          text: 'Франшиза «$name»: ${changes.join(', ')}',
+          undo: () async {
+            for (final undo in undos.reversed) {
+              await undo();
+            }
+          },
+        );
       },
     );
   }
@@ -169,13 +215,17 @@ class _DubbingDialog extends ConsumerStatefulWidget {
     required this.load,
     required this.onSave,
     this.note,
-    this.muted,
+    this.alerts,
+    this.alertsByDefault = false,
+    this.alertsTitle = '',
   });
 
   final String title;
   final String? note;
 
-  final bool? muted;
+  final bool? alerts;
+  final bool alertsByDefault;
+  final String alertsTitle;
 
   final String? current;
   final String autoDetail;
@@ -184,7 +234,7 @@ class _DubbingDialog extends ConsumerStatefulWidget {
   final Future<Map<String, int>> Function() load;
   final Future<({String text, Future<void> Function() undo})> Function(
     String? value,
-    bool? muted,
+    bool? alerts,
   )
   onSave;
 
@@ -194,7 +244,7 @@ class _DubbingDialog extends ConsumerStatefulWidget {
 
 class _DubbingDialogState extends ConsumerState<_DubbingDialog> {
   late String? _selected = widget.current;
-  late bool? _muted = widget.muted;
+  late bool? _alerts = widget.alerts;
   Map<String, int>? _options;
   String? _error;
 
@@ -219,11 +269,11 @@ class _DubbingDialogState extends ConsumerState<_DubbingDialog> {
   Future<void> _save() async {
     final navigator = Navigator.of(context);
     final toast = ref.read(toastProvider.notifier);
-    if (_selected == widget.current && _muted == widget.muted) {
+    if (_selected == widget.current && _alerts == widget.alerts) {
       navigator.pop();
       return;
     }
-    final result = await widget.onSave(_selected, _muted);
+    final result = await widget.onSave(_selected, _alerts);
     navigator.pop();
     toast.show(result.text, undo: result.undo);
   }
@@ -249,17 +299,34 @@ class _DubbingDialogState extends ConsumerState<_DubbingDialog> {
               [?widget.note, _explanation].join(' '),
               style: const TextStyle(color: AppColors.muted, height: 1.45),
             ),
-            if (_muted case final muted?) ...[
+            if (_alerts case final alerts?) ...[
               const SizedBox(height: 8),
-              SwitchListTile(
-                value: !muted,
-                onChanged: (on) => setState(() => _muted = !on),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 6),
-                title: const Text('Уведомлять о новых сериях'),
-                subtitle: const Text(
-                  'Для «Смотрю» и «Хочу посмотреть».',
-                  style: TextStyle(color: AppColors.muted),
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.alertsTitle,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          alerts == widget.alertsByDefault
+                              ? 'По общей настройке.'
+                              : 'Отдельно от общей настройки.',
+                          style: const TextStyle(color: AppColors.muted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Switch(
+                    value: alerts,
+                    onChanged: (on) => setState(() => _alerts = on),
+                  ),
+                ],
               ),
               const Divider(height: 14, color: AppColors.panelBorder),
             ],

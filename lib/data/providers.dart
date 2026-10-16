@@ -4,6 +4,7 @@ import 'database/app_database.dart';
 import 'database/franchise_repository.dart';
 import 'database/franchise_rules.dart';
 import 'database/library_repository.dart';
+import 'database/notices_repository.dart';
 import 'database/queue_repository.dart';
 import 'database/settings_repository.dart';
 import 'database/user_groups_repository.dart';
@@ -138,23 +139,17 @@ final watchOrderProvider = Provider.family<AsyncValue<WatchOrder>, String>((
   return AsyncData(buildWatchOrder(parts.value!, relations.value!));
 });
 
-final franchiseLoadProvider = FutureProvider.family<void, String>((
-  ref,
-  key,
-) async {
-  if (isCustomFranchise(key)) return;
-  final franchises = ref.read(franchiseRepositoryProvider);
-  if (!await franchises.needsLoading(key)) return;
-  final parts = await ref
-      .read(franchiseRepositoryProvider)
-      .watchParts(key)
-      .first;
-  if (parts.isEmpty) return;
-  final loaded = await ref
-      .read(shikimoriClientProvider)
-      .getFranchise(parts.first.id);
-  if (loaded != null) await franchises.saveParts(loaded);
-});
+final noticesRepositoryProvider = Provider<NoticesRepository>(
+  (ref) => NoticesRepository(ref.watch(databaseProvider)),
+);
+
+final noticesProvider = StreamProvider<List<Notice>>(
+  (ref) => ref.watch(noticesRepositoryProvider).watchAll(),
+);
+
+final unreadNoticesProvider = StreamProvider<int>(
+  (ref) => ref.watch(noticesRepositoryProvider).watchUnread(),
+);
 
 final userGroupsRepositoryProvider = Provider<UserGroupsRepository>(
   (ref) => UserGroupsRepository(ref.watch(databaseProvider)),

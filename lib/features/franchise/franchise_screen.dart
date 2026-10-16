@@ -18,6 +18,7 @@ import '../../data/database/status_action.dart';
 import '../../data/database/user_groups_repository.dart';
 import '../../data/database/watch_status.dart';
 import '../../data/providers.dart';
+import '../notifications/release_watcher.dart';
 import '../../data/shikimori/shikimori_client.dart';
 import '../groups/group_actions.dart';
 import '../notifications/alerts_button.dart';

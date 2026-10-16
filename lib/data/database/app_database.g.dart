@@ -1187,6 +1187,21 @@ class $LibraryEntriesTable extends LibraryEntries
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _alertsOnMeta = const VerificationMeta(
+    'alertsOn',
+  );
+  @override
+  late final GeneratedColumn<bool> alertsOn = GeneratedColumn<bool>(
+    'alerts_on',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("alerts_on" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _dubbingMeta = const VerificationMeta(
     'dubbing',
   );
@@ -1221,6 +1236,7 @@ class $LibraryEntriesTable extends LibraryEntries
     deletedAt,
     franchiseOverride,
     muted,
+    alertsOn,
     dubbing,
     dubbingSeen,
   ];
@@ -1306,6 +1322,12 @@ class $LibraryEntriesTable extends LibraryEntries
         muted.isAcceptableOrUnknown(data['muted']!, _mutedMeta),
       );
     }
+    if (data.containsKey('alerts_on')) {
+      context.handle(
+        _alertsOnMeta,
+        alertsOn.isAcceptableOrUnknown(data['alerts_on']!, _alertsOnMeta),
+      );
+    }
     if (data.containsKey('dubbing')) {
       context.handle(
         _dubbingMeta,
@@ -1370,6 +1392,10 @@ class $LibraryEntriesTable extends LibraryEntries
         DriftSqlType.bool,
         data['${effectivePrefix}muted'],
       )!,
+      alertsOn: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}alerts_on'],
+      )!,
       dubbing: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}dubbing'],
@@ -1398,6 +1424,7 @@ class LibraryEntry extends DataClass implements Insertable<LibraryEntry> {
   final DateTime? deletedAt;
   final String? franchiseOverride;
   final bool muted;
+  final bool alertsOn;
   final String? dubbing;
   final String? dubbingSeen;
   const LibraryEntry({
@@ -1411,6 +1438,7 @@ class LibraryEntry extends DataClass implements Insertable<LibraryEntry> {
     this.deletedAt,
     this.franchiseOverride,
     required this.muted,
+    required this.alertsOn,
     this.dubbing,
     this.dubbingSeen,
   });
@@ -1433,6 +1461,7 @@ class LibraryEntry extends DataClass implements Insertable<LibraryEntry> {
       map['franchise_override'] = Variable<String>(franchiseOverride);
     }
     map['muted'] = Variable<bool>(muted);
+    map['alerts_on'] = Variable<bool>(alertsOn);
     if (!nullToAbsent || dubbing != null) {
       map['dubbing'] = Variable<String>(dubbing);
     }
@@ -1460,6 +1489,7 @@ class LibraryEntry extends DataClass implements Insertable<LibraryEntry> {
           ? const Value.absent()
           : Value(franchiseOverride),
       muted: Value(muted),
+      alertsOn: Value(alertsOn),
       dubbing: dubbing == null && nullToAbsent
           ? const Value.absent()
           : Value(dubbing),
@@ -1487,6 +1517,7 @@ class LibraryEntry extends DataClass implements Insertable<LibraryEntry> {
         json['franchiseOverride'],
       ),
       muted: serializer.fromJson<bool>(json['muted']),
+      alertsOn: serializer.fromJson<bool>(json['alertsOn']),
       dubbing: serializer.fromJson<String?>(json['dubbing']),
       dubbingSeen: serializer.fromJson<String?>(json['dubbingSeen']),
     );
@@ -1505,6 +1536,7 @@ class LibraryEntry extends DataClass implements Insertable<LibraryEntry> {
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
       'franchiseOverride': serializer.toJson<String?>(franchiseOverride),
       'muted': serializer.toJson<bool>(muted),
+      'alertsOn': serializer.toJson<bool>(alertsOn),
       'dubbing': serializer.toJson<String?>(dubbing),
       'dubbingSeen': serializer.toJson<String?>(dubbingSeen),
     };
@@ -1521,6 +1553,7 @@ class LibraryEntry extends DataClass implements Insertable<LibraryEntry> {
     Value<DateTime?> deletedAt = const Value.absent(),
     Value<String?> franchiseOverride = const Value.absent(),
     bool? muted,
+    bool? alertsOn,
     Value<String?> dubbing = const Value.absent(),
     Value<String?> dubbingSeen = const Value.absent(),
   }) => LibraryEntry(
@@ -1536,6 +1569,7 @@ class LibraryEntry extends DataClass implements Insertable<LibraryEntry> {
         ? franchiseOverride.value
         : this.franchiseOverride,
     muted: muted ?? this.muted,
+    alertsOn: alertsOn ?? this.alertsOn,
     dubbing: dubbing.present ? dubbing.value : this.dubbing,
     dubbingSeen: dubbingSeen.present ? dubbingSeen.value : this.dubbingSeen,
   );
@@ -1553,6 +1587,7 @@ class LibraryEntry extends DataClass implements Insertable<LibraryEntry> {
           ? data.franchiseOverride.value
           : this.franchiseOverride,
       muted: data.muted.present ? data.muted.value : this.muted,
+      alertsOn: data.alertsOn.present ? data.alertsOn.value : this.alertsOn,
       dubbing: data.dubbing.present ? data.dubbing.value : this.dubbing,
       dubbingSeen: data.dubbingSeen.present
           ? data.dubbingSeen.value
@@ -1573,6 +1608,7 @@ class LibraryEntry extends DataClass implements Insertable<LibraryEntry> {
           ..write('deletedAt: $deletedAt, ')
           ..write('franchiseOverride: $franchiseOverride, ')
           ..write('muted: $muted, ')
+          ..write('alertsOn: $alertsOn, ')
           ..write('dubbing: $dubbing, ')
           ..write('dubbingSeen: $dubbingSeen')
           ..write(')'))
@@ -1591,6 +1627,7 @@ class LibraryEntry extends DataClass implements Insertable<LibraryEntry> {
     deletedAt,
     franchiseOverride,
     muted,
+    alertsOn,
     dubbing,
     dubbingSeen,
   );
@@ -1608,6 +1645,7 @@ class LibraryEntry extends DataClass implements Insertable<LibraryEntry> {
           other.deletedAt == this.deletedAt &&
           other.franchiseOverride == this.franchiseOverride &&
           other.muted == this.muted &&
+          other.alertsOn == this.alertsOn &&
           other.dubbing == this.dubbing &&
           other.dubbingSeen == this.dubbingSeen);
 }
@@ -1623,6 +1661,7 @@ class LibraryEntriesCompanion extends UpdateCompanion<LibraryEntry> {
   final Value<DateTime?> deletedAt;
   final Value<String?> franchiseOverride;
   final Value<bool> muted;
+  final Value<bool> alertsOn;
   final Value<String?> dubbing;
   final Value<String?> dubbingSeen;
   final Value<int> rowid;
@@ -1637,6 +1676,7 @@ class LibraryEntriesCompanion extends UpdateCompanion<LibraryEntry> {
     this.deletedAt = const Value.absent(),
     this.franchiseOverride = const Value.absent(),
     this.muted = const Value.absent(),
+    this.alertsOn = const Value.absent(),
     this.dubbing = const Value.absent(),
     this.dubbingSeen = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1652,6 +1692,7 @@ class LibraryEntriesCompanion extends UpdateCompanion<LibraryEntry> {
     this.deletedAt = const Value.absent(),
     this.franchiseOverride = const Value.absent(),
     this.muted = const Value.absent(),
+    this.alertsOn = const Value.absent(),
     this.dubbing = const Value.absent(),
     this.dubbingSeen = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1671,6 +1712,7 @@ class LibraryEntriesCompanion extends UpdateCompanion<LibraryEntry> {
     Expression<DateTime>? deletedAt,
     Expression<String>? franchiseOverride,
     Expression<bool>? muted,
+    Expression<bool>? alertsOn,
     Expression<String>? dubbing,
     Expression<String>? dubbingSeen,
     Expression<int>? rowid,
@@ -1686,6 +1728,7 @@ class LibraryEntriesCompanion extends UpdateCompanion<LibraryEntry> {
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (franchiseOverride != null) 'franchise_override': franchiseOverride,
       if (muted != null) 'muted': muted,
+      if (alertsOn != null) 'alerts_on': alertsOn,
       if (dubbing != null) 'dubbing': dubbing,
       if (dubbingSeen != null) 'dubbing_seen': dubbingSeen,
       if (rowid != null) 'rowid': rowid,
@@ -1703,6 +1746,7 @@ class LibraryEntriesCompanion extends UpdateCompanion<LibraryEntry> {
     Value<DateTime?>? deletedAt,
     Value<String?>? franchiseOverride,
     Value<bool>? muted,
+    Value<bool>? alertsOn,
     Value<String?>? dubbing,
     Value<String?>? dubbingSeen,
     Value<int>? rowid,
@@ -1718,6 +1762,7 @@ class LibraryEntriesCompanion extends UpdateCompanion<LibraryEntry> {
       deletedAt: deletedAt ?? this.deletedAt,
       franchiseOverride: franchiseOverride ?? this.franchiseOverride,
       muted: muted ?? this.muted,
+      alertsOn: alertsOn ?? this.alertsOn,
       dubbing: dubbing ?? this.dubbing,
       dubbingSeen: dubbingSeen ?? this.dubbingSeen,
       rowid: rowid ?? this.rowid,
@@ -1757,6 +1802,9 @@ class LibraryEntriesCompanion extends UpdateCompanion<LibraryEntry> {
     if (muted.present) {
       map['muted'] = Variable<bool>(muted.value);
     }
+    if (alertsOn.present) {
+      map['alerts_on'] = Variable<bool>(alertsOn.value);
+    }
     if (dubbing.present) {
       map['dubbing'] = Variable<String>(dubbing.value);
     }
@@ -1782,6 +1830,7 @@ class LibraryEntriesCompanion extends UpdateCompanion<LibraryEntry> {
           ..write('deletedAt: $deletedAt, ')
           ..write('franchiseOverride: $franchiseOverride, ')
           ..write('muted: $muted, ')
+          ..write('alertsOn: $alertsOn, ')
           ..write('dubbing: $dubbing, ')
           ..write('dubbingSeen: $dubbingSeen, ')
           ..write('rowid: $rowid')
@@ -3465,6 +3514,34 @@ class $FranchisesTable extends Franchises
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _mutedMeta = const VerificationMeta('muted');
+  @override
+  late final GeneratedColumn<bool> muted = GeneratedColumn<bool>(
+    'muted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("muted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _alertsOnMeta = const VerificationMeta(
+    'alertsOn',
+  );
+  @override
+  late final GeneratedColumn<bool> alertsOn = GeneratedColumn<bool>(
+    'alerts_on',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("alerts_on" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _partsLoadedAtMeta = const VerificationMeta(
     'partsLoadedAt',
   );
@@ -3496,6 +3573,8 @@ class $FranchisesTable extends Franchises
     coverAnimeId,
     dubbing,
     dubbingSeen,
+    muted,
+    alertsOn,
     partsLoadedAt,
     updatedAt,
   ];
@@ -3555,6 +3634,18 @@ class $FranchisesTable extends Franchises
         ),
       );
     }
+    if (data.containsKey('muted')) {
+      context.handle(
+        _mutedMeta,
+        muted.isAcceptableOrUnknown(data['muted']!, _mutedMeta),
+      );
+    }
+    if (data.containsKey('alerts_on')) {
+      context.handle(
+        _alertsOnMeta,
+        alertsOn.isAcceptableOrUnknown(data['alerts_on']!, _alertsOnMeta),
+      );
+    }
     if (data.containsKey('parts_loaded_at')) {
       context.handle(
         _partsLoadedAtMeta,
@@ -3605,6 +3696,14 @@ class $FranchisesTable extends Franchises
         DriftSqlType.string,
         data['${effectivePrefix}dubbing_seen'],
       ),
+      muted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}muted'],
+      )!,
+      alertsOn: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}alerts_on'],
+      )!,
       partsLoadedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}parts_loaded_at'],
@@ -3629,6 +3728,8 @@ class Franchise extends DataClass implements Insertable<Franchise> {
   final int? coverAnimeId;
   final String? dubbing;
   final String? dubbingSeen;
+  final bool muted;
+  final bool alertsOn;
   final DateTime? partsLoadedAt;
   final DateTime updatedAt;
   const Franchise({
@@ -3638,6 +3739,8 @@ class Franchise extends DataClass implements Insertable<Franchise> {
     this.coverAnimeId,
     this.dubbing,
     this.dubbingSeen,
+    required this.muted,
+    required this.alertsOn,
     this.partsLoadedAt,
     required this.updatedAt,
   });
@@ -3660,6 +3763,8 @@ class Franchise extends DataClass implements Insertable<Franchise> {
     if (!nullToAbsent || dubbingSeen != null) {
       map['dubbing_seen'] = Variable<String>(dubbingSeen);
     }
+    map['muted'] = Variable<bool>(muted);
+    map['alerts_on'] = Variable<bool>(alertsOn);
     if (!nullToAbsent || partsLoadedAt != null) {
       map['parts_loaded_at'] = Variable<DateTime>(partsLoadedAt);
     }
@@ -3683,6 +3788,8 @@ class Franchise extends DataClass implements Insertable<Franchise> {
       dubbingSeen: dubbingSeen == null && nullToAbsent
           ? const Value.absent()
           : Value(dubbingSeen),
+      muted: Value(muted),
+      alertsOn: Value(alertsOn),
       partsLoadedAt: partsLoadedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(partsLoadedAt),
@@ -3702,6 +3809,8 @@ class Franchise extends DataClass implements Insertable<Franchise> {
       coverAnimeId: serializer.fromJson<int?>(json['coverAnimeId']),
       dubbing: serializer.fromJson<String?>(json['dubbing']),
       dubbingSeen: serializer.fromJson<String?>(json['dubbingSeen']),
+      muted: serializer.fromJson<bool>(json['muted']),
+      alertsOn: serializer.fromJson<bool>(json['alertsOn']),
       partsLoadedAt: serializer.fromJson<DateTime?>(json['partsLoadedAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -3716,6 +3825,8 @@ class Franchise extends DataClass implements Insertable<Franchise> {
       'coverAnimeId': serializer.toJson<int?>(coverAnimeId),
       'dubbing': serializer.toJson<String?>(dubbing),
       'dubbingSeen': serializer.toJson<String?>(dubbingSeen),
+      'muted': serializer.toJson<bool>(muted),
+      'alertsOn': serializer.toJson<bool>(alertsOn),
       'partsLoadedAt': serializer.toJson<DateTime?>(partsLoadedAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -3728,6 +3839,8 @@ class Franchise extends DataClass implements Insertable<Franchise> {
     Value<int?> coverAnimeId = const Value.absent(),
     Value<String?> dubbing = const Value.absent(),
     Value<String?> dubbingSeen = const Value.absent(),
+    bool? muted,
+    bool? alertsOn,
     Value<DateTime?> partsLoadedAt = const Value.absent(),
     DateTime? updatedAt,
   }) => Franchise(
@@ -3737,6 +3850,8 @@ class Franchise extends DataClass implements Insertable<Franchise> {
     coverAnimeId: coverAnimeId.present ? coverAnimeId.value : this.coverAnimeId,
     dubbing: dubbing.present ? dubbing.value : this.dubbing,
     dubbingSeen: dubbingSeen.present ? dubbingSeen.value : this.dubbingSeen,
+    muted: muted ?? this.muted,
+    alertsOn: alertsOn ?? this.alertsOn,
     partsLoadedAt: partsLoadedAt.present
         ? partsLoadedAt.value
         : this.partsLoadedAt,
@@ -3754,6 +3869,8 @@ class Franchise extends DataClass implements Insertable<Franchise> {
       dubbingSeen: data.dubbingSeen.present
           ? data.dubbingSeen.value
           : this.dubbingSeen,
+      muted: data.muted.present ? data.muted.value : this.muted,
+      alertsOn: data.alertsOn.present ? data.alertsOn.value : this.alertsOn,
       partsLoadedAt: data.partsLoadedAt.present
           ? data.partsLoadedAt.value
           : this.partsLoadedAt,
@@ -3770,6 +3887,8 @@ class Franchise extends DataClass implements Insertable<Franchise> {
           ..write('coverAnimeId: $coverAnimeId, ')
           ..write('dubbing: $dubbing, ')
           ..write('dubbingSeen: $dubbingSeen, ')
+          ..write('muted: $muted, ')
+          ..write('alertsOn: $alertsOn, ')
           ..write('partsLoadedAt: $partsLoadedAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -3784,6 +3903,8 @@ class Franchise extends DataClass implements Insertable<Franchise> {
     coverAnimeId,
     dubbing,
     dubbingSeen,
+    muted,
+    alertsOn,
     partsLoadedAt,
     updatedAt,
   );
@@ -3797,6 +3918,8 @@ class Franchise extends DataClass implements Insertable<Franchise> {
           other.coverAnimeId == this.coverAnimeId &&
           other.dubbing == this.dubbing &&
           other.dubbingSeen == this.dubbingSeen &&
+          other.muted == this.muted &&
+          other.alertsOn == this.alertsOn &&
           other.partsLoadedAt == this.partsLoadedAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -3808,6 +3931,8 @@ class FranchisesCompanion extends UpdateCompanion<Franchise> {
   final Value<int?> coverAnimeId;
   final Value<String?> dubbing;
   final Value<String?> dubbingSeen;
+  final Value<bool> muted;
+  final Value<bool> alertsOn;
   final Value<DateTime?> partsLoadedAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -3818,6 +3943,8 @@ class FranchisesCompanion extends UpdateCompanion<Franchise> {
     this.coverAnimeId = const Value.absent(),
     this.dubbing = const Value.absent(),
     this.dubbingSeen = const Value.absent(),
+    this.muted = const Value.absent(),
+    this.alertsOn = const Value.absent(),
     this.partsLoadedAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -3829,6 +3956,8 @@ class FranchisesCompanion extends UpdateCompanion<Franchise> {
     this.coverAnimeId = const Value.absent(),
     this.dubbing = const Value.absent(),
     this.dubbingSeen = const Value.absent(),
+    this.muted = const Value.absent(),
+    this.alertsOn = const Value.absent(),
     this.partsLoadedAt = const Value.absent(),
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -3841,6 +3970,8 @@ class FranchisesCompanion extends UpdateCompanion<Franchise> {
     Expression<int>? coverAnimeId,
     Expression<String>? dubbing,
     Expression<String>? dubbingSeen,
+    Expression<bool>? muted,
+    Expression<bool>? alertsOn,
     Expression<DateTime>? partsLoadedAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -3852,6 +3983,8 @@ class FranchisesCompanion extends UpdateCompanion<Franchise> {
       if (coverAnimeId != null) 'cover_anime_id': coverAnimeId,
       if (dubbing != null) 'dubbing': dubbing,
       if (dubbingSeen != null) 'dubbing_seen': dubbingSeen,
+      if (muted != null) 'muted': muted,
+      if (alertsOn != null) 'alerts_on': alertsOn,
       if (partsLoadedAt != null) 'parts_loaded_at': partsLoadedAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -3865,6 +3998,8 @@ class FranchisesCompanion extends UpdateCompanion<Franchise> {
     Value<int?>? coverAnimeId,
     Value<String?>? dubbing,
     Value<String?>? dubbingSeen,
+    Value<bool>? muted,
+    Value<bool>? alertsOn,
     Value<DateTime?>? partsLoadedAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -3876,6 +4011,8 @@ class FranchisesCompanion extends UpdateCompanion<Franchise> {
       coverAnimeId: coverAnimeId ?? this.coverAnimeId,
       dubbing: dubbing ?? this.dubbing,
       dubbingSeen: dubbingSeen ?? this.dubbingSeen,
+      muted: muted ?? this.muted,
+      alertsOn: alertsOn ?? this.alertsOn,
       partsLoadedAt: partsLoadedAt ?? this.partsLoadedAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -3903,6 +4040,12 @@ class FranchisesCompanion extends UpdateCompanion<Franchise> {
     if (dubbingSeen.present) {
       map['dubbing_seen'] = Variable<String>(dubbingSeen.value);
     }
+    if (muted.present) {
+      map['muted'] = Variable<bool>(muted.value);
+    }
+    if (alertsOn.present) {
+      map['alerts_on'] = Variable<bool>(alertsOn.value);
+    }
     if (partsLoadedAt.present) {
       map['parts_loaded_at'] = Variable<DateTime>(partsLoadedAt.value);
     }
@@ -3924,6 +4067,8 @@ class FranchisesCompanion extends UpdateCompanion<Franchise> {
           ..write('coverAnimeId: $coverAnimeId, ')
           ..write('dubbing: $dubbing, ')
           ..write('dubbingSeen: $dubbingSeen, ')
+          ..write('muted: $muted, ')
+          ..write('alertsOn: $alertsOn, ')
           ..write('partsLoadedAt: $partsLoadedAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -6166,6 +6311,447 @@ class SiteEpisodesCompanion extends UpdateCompanion<SiteEpisode> {
   }
 }
 
+class $NoticesTable extends Notices with TableInfo<$NoticesTable, Notice> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $NoticesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _animeIdMeta = const VerificationMeta(
+    'animeId',
+  );
+  @override
+  late final GeneratedColumn<int> animeId = GeneratedColumn<int>(
+    'anime_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _bodyMeta = const VerificationMeta('body');
+  @override
+  late final GeneratedColumn<String> body = GeneratedColumn<String>(
+    'body',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _readMeta = const VerificationMeta('read');
+  @override
+  late final GeneratedColumn<bool> read = GeneratedColumn<bool>(
+    'read',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("read" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    category,
+    animeId,
+    title,
+    body,
+    createdAt,
+    read,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'notices';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Notice> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryMeta);
+    }
+    if (data.containsKey('anime_id')) {
+      context.handle(
+        _animeIdMeta,
+        animeId.isAcceptableOrUnknown(data['anime_id']!, _animeIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_animeIdMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('body')) {
+      context.handle(
+        _bodyMeta,
+        body.isAcceptableOrUnknown(data['body']!, _bodyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bodyMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('read')) {
+      context.handle(
+        _readMeta,
+        read.isAcceptableOrUnknown(data['read']!, _readMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Notice map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Notice(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      )!,
+      animeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}anime_id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      body: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}body'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      read: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}read'],
+      )!,
+    );
+  }
+
+  @override
+  $NoticesTable createAlias(String alias) {
+    return $NoticesTable(attachedDatabase, alias);
+  }
+}
+
+class Notice extends DataClass implements Insertable<Notice> {
+  final int id;
+  final String category;
+  final int animeId;
+  final String title;
+  final String body;
+  final DateTime createdAt;
+  final bool read;
+  const Notice({
+    required this.id,
+    required this.category,
+    required this.animeId,
+    required this.title,
+    required this.body,
+    required this.createdAt,
+    required this.read,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['category'] = Variable<String>(category);
+    map['anime_id'] = Variable<int>(animeId);
+    map['title'] = Variable<String>(title);
+    map['body'] = Variable<String>(body);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['read'] = Variable<bool>(read);
+    return map;
+  }
+
+  NoticesCompanion toCompanion(bool nullToAbsent) {
+    return NoticesCompanion(
+      id: Value(id),
+      category: Value(category),
+      animeId: Value(animeId),
+      title: Value(title),
+      body: Value(body),
+      createdAt: Value(createdAt),
+      read: Value(read),
+    );
+  }
+
+  factory Notice.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Notice(
+      id: serializer.fromJson<int>(json['id']),
+      category: serializer.fromJson<String>(json['category']),
+      animeId: serializer.fromJson<int>(json['animeId']),
+      title: serializer.fromJson<String>(json['title']),
+      body: serializer.fromJson<String>(json['body']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      read: serializer.fromJson<bool>(json['read']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'category': serializer.toJson<String>(category),
+      'animeId': serializer.toJson<int>(animeId),
+      'title': serializer.toJson<String>(title),
+      'body': serializer.toJson<String>(body),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'read': serializer.toJson<bool>(read),
+    };
+  }
+
+  Notice copyWith({
+    int? id,
+    String? category,
+    int? animeId,
+    String? title,
+    String? body,
+    DateTime? createdAt,
+    bool? read,
+  }) => Notice(
+    id: id ?? this.id,
+    category: category ?? this.category,
+    animeId: animeId ?? this.animeId,
+    title: title ?? this.title,
+    body: body ?? this.body,
+    createdAt: createdAt ?? this.createdAt,
+    read: read ?? this.read,
+  );
+  Notice copyWithCompanion(NoticesCompanion data) {
+    return Notice(
+      id: data.id.present ? data.id.value : this.id,
+      category: data.category.present ? data.category.value : this.category,
+      animeId: data.animeId.present ? data.animeId.value : this.animeId,
+      title: data.title.present ? data.title.value : this.title,
+      body: data.body.present ? data.body.value : this.body,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      read: data.read.present ? data.read.value : this.read,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Notice(')
+          ..write('id: $id, ')
+          ..write('category: $category, ')
+          ..write('animeId: $animeId, ')
+          ..write('title: $title, ')
+          ..write('body: $body, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('read: $read')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, category, animeId, title, body, createdAt, read);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Notice &&
+          other.id == this.id &&
+          other.category == this.category &&
+          other.animeId == this.animeId &&
+          other.title == this.title &&
+          other.body == this.body &&
+          other.createdAt == this.createdAt &&
+          other.read == this.read);
+}
+
+class NoticesCompanion extends UpdateCompanion<Notice> {
+  final Value<int> id;
+  final Value<String> category;
+  final Value<int> animeId;
+  final Value<String> title;
+  final Value<String> body;
+  final Value<DateTime> createdAt;
+  final Value<bool> read;
+  const NoticesCompanion({
+    this.id = const Value.absent(),
+    this.category = const Value.absent(),
+    this.animeId = const Value.absent(),
+    this.title = const Value.absent(),
+    this.body = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.read = const Value.absent(),
+  });
+  NoticesCompanion.insert({
+    this.id = const Value.absent(),
+    required String category,
+    required int animeId,
+    required String title,
+    required String body,
+    required DateTime createdAt,
+    this.read = const Value.absent(),
+  }) : category = Value(category),
+       animeId = Value(animeId),
+       title = Value(title),
+       body = Value(body),
+       createdAt = Value(createdAt);
+  static Insertable<Notice> custom({
+    Expression<int>? id,
+    Expression<String>? category,
+    Expression<int>? animeId,
+    Expression<String>? title,
+    Expression<String>? body,
+    Expression<DateTime>? createdAt,
+    Expression<bool>? read,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (category != null) 'category': category,
+      if (animeId != null) 'anime_id': animeId,
+      if (title != null) 'title': title,
+      if (body != null) 'body': body,
+      if (createdAt != null) 'created_at': createdAt,
+      if (read != null) 'read': read,
+    });
+  }
+
+  NoticesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? category,
+    Value<int>? animeId,
+    Value<String>? title,
+    Value<String>? body,
+    Value<DateTime>? createdAt,
+    Value<bool>? read,
+  }) {
+    return NoticesCompanion(
+      id: id ?? this.id,
+      category: category ?? this.category,
+      animeId: animeId ?? this.animeId,
+      title: title ?? this.title,
+      body: body ?? this.body,
+      createdAt: createdAt ?? this.createdAt,
+      read: read ?? this.read,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (animeId.present) {
+      map['anime_id'] = Variable<int>(animeId.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (body.present) {
+      map['body'] = Variable<String>(body.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (read.present) {
+      map['read'] = Variable<bool>(read.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NoticesCompanion(')
+          ..write('id: $id, ')
+          ..write('category: $category, ')
+          ..write('animeId: $animeId, ')
+          ..write('title: $title, ')
+          ..write('body: $body, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('read: $read')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6186,6 +6772,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $WatchLinksTable watchLinks = $WatchLinksTable(this);
   late final $SiteEpisodesTable siteEpisodes = $SiteEpisodesTable(this);
+  late final $NoticesTable notices = $NoticesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6204,6 +6791,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     watchQueueItems,
     watchLinks,
     siteEpisodes,
+    notices,
   ];
   @override
   DriftDatabaseOptions get options =>
@@ -6796,6 +7384,7 @@ typedef $$LibraryEntriesTableCreateCompanionBuilder =
       Value<DateTime?> deletedAt,
       Value<String?> franchiseOverride,
       Value<bool> muted,
+      Value<bool> alertsOn,
       Value<String?> dubbing,
       Value<String?> dubbingSeen,
       Value<int> rowid,
@@ -6812,6 +7401,7 @@ typedef $$LibraryEntriesTableUpdateCompanionBuilder =
       Value<DateTime?> deletedAt,
       Value<String?> franchiseOverride,
       Value<bool> muted,
+      Value<bool> alertsOn,
       Value<String?> dubbing,
       Value<String?> dubbingSeen,
       Value<int> rowid,
@@ -6912,6 +7502,11 @@ class $$LibraryEntriesTableFilterComposer
 
   ColumnFilters<bool> get muted => $composableBuilder(
     column: $table.muted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get alertsOn => $composableBuilder(
+    column: $table.alertsOn,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7028,6 +7623,11 @@ class $$LibraryEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get alertsOn => $composableBuilder(
+    column: $table.alertsOn,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get dubbing => $composableBuilder(
     column: $table.dubbing,
     builder: (column) => ColumnOrderings(column),
@@ -7099,6 +7699,9 @@ class $$LibraryEntriesTableAnnotationComposer
 
   GeneratedColumn<bool> get muted =>
       $composableBuilder(column: $table.muted, builder: (column) => column);
+
+  GeneratedColumn<bool> get alertsOn =>
+      $composableBuilder(column: $table.alertsOn, builder: (column) => column);
 
   GeneratedColumn<String> get dubbing =>
       $composableBuilder(column: $table.dubbing, builder: (column) => column);
@@ -7197,6 +7800,7 @@ class $$LibraryEntriesTableTableManager
                 Value<DateTime?> deletedAt = const Value.absent(),
                 Value<String?> franchiseOverride = const Value.absent(),
                 Value<bool> muted = const Value.absent(),
+                Value<bool> alertsOn = const Value.absent(),
                 Value<String?> dubbing = const Value.absent(),
                 Value<String?> dubbingSeen = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -7211,6 +7815,7 @@ class $$LibraryEntriesTableTableManager
                 deletedAt: deletedAt,
                 franchiseOverride: franchiseOverride,
                 muted: muted,
+                alertsOn: alertsOn,
                 dubbing: dubbing,
                 dubbingSeen: dubbingSeen,
                 rowid: rowid,
@@ -7227,6 +7832,7 @@ class $$LibraryEntriesTableTableManager
                 Value<DateTime?> deletedAt = const Value.absent(),
                 Value<String?> franchiseOverride = const Value.absent(),
                 Value<bool> muted = const Value.absent(),
+                Value<bool> alertsOn = const Value.absent(),
                 Value<String?> dubbing = const Value.absent(),
                 Value<String?> dubbingSeen = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -7241,6 +7847,7 @@ class $$LibraryEntriesTableTableManager
                 deletedAt: deletedAt,
                 franchiseOverride: franchiseOverride,
                 muted: muted,
+                alertsOn: alertsOn,
                 dubbing: dubbing,
                 dubbingSeen: dubbingSeen,
                 rowid: rowid,
@@ -8532,6 +9139,8 @@ typedef $$FranchisesTableCreateCompanionBuilder = FranchisesCompanion Function({
   Value<int?> coverAnimeId,
   Value<String?> dubbing,
   Value<String?> dubbingSeen,
+  Value<bool> muted,
+  Value<bool> alertsOn,
   Value<DateTime?> partsLoadedAt,
   required DateTime updatedAt,
   Value<int> rowid,
@@ -8543,6 +9152,8 @@ typedef $$FranchisesTableUpdateCompanionBuilder = FranchisesCompanion Function({
   Value<int?> coverAnimeId,
   Value<String?> dubbing,
   Value<String?> dubbingSeen,
+  Value<bool> muted,
+  Value<bool> alertsOn,
   Value<DateTime?> partsLoadedAt,
   Value<DateTime> updatedAt,
   Value<int> rowid,
@@ -8584,6 +9195,16 @@ class $$FranchisesTableFilterComposer
 
   ColumnFilters<String> get dubbingSeen => $composableBuilder(
     column: $table.dubbingSeen,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get muted => $composableBuilder(
+    column: $table.muted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get alertsOn => $composableBuilder(
+    column: $table.alertsOn,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8637,6 +9258,16 @@ class $$FranchisesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get muted => $composableBuilder(
+    column: $table.muted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get alertsOn => $composableBuilder(
+    column: $table.alertsOn,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get partsLoadedAt => $composableBuilder(
     column: $table.partsLoadedAt,
     builder: (column) => ColumnOrderings(column),
@@ -8678,6 +9309,12 @@ class $$FranchisesTableAnnotationComposer
     column: $table.dubbingSeen,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get muted =>
+      $composableBuilder(column: $table.muted, builder: (column) => column);
+
+  GeneratedColumn<bool> get alertsOn =>
+      $composableBuilder(column: $table.alertsOn, builder: (column) => column);
 
   GeneratedColumn<DateTime> get partsLoadedAt => $composableBuilder(
     column: $table.partsLoadedAt,
@@ -8725,6 +9362,8 @@ class $$FranchisesTableTableManager
                 Value<int?> coverAnimeId = const Value.absent(),
                 Value<String?> dubbing = const Value.absent(),
                 Value<String?> dubbingSeen = const Value.absent(),
+                Value<bool> muted = const Value.absent(),
+                Value<bool> alertsOn = const Value.absent(),
                 Value<DateTime?> partsLoadedAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -8735,6 +9374,8 @@ class $$FranchisesTableTableManager
                 coverAnimeId: coverAnimeId,
                 dubbing: dubbing,
                 dubbingSeen: dubbingSeen,
+                muted: muted,
+                alertsOn: alertsOn,
                 partsLoadedAt: partsLoadedAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -8747,6 +9388,8 @@ class $$FranchisesTableTableManager
                 Value<int?> coverAnimeId = const Value.absent(),
                 Value<String?> dubbing = const Value.absent(),
                 Value<String?> dubbingSeen = const Value.absent(),
+                Value<bool> muted = const Value.absent(),
+                Value<bool> alertsOn = const Value.absent(),
                 Value<DateTime?> partsLoadedAt = const Value.absent(),
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -8757,6 +9400,8 @@ class $$FranchisesTableTableManager
                 coverAnimeId: coverAnimeId,
                 dubbing: dubbing,
                 dubbingSeen: dubbingSeen,
+                muted: muted,
+                alertsOn: alertsOn,
                 partsLoadedAt: partsLoadedAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -10478,6 +11123,239 @@ typedef $$SiteEpisodesTableProcessedTableManager =
       SiteEpisode,
       PrefetchHooks Function()
     >;
+typedef $$NoticesTableCreateCompanionBuilder = NoticesCompanion Function({
+  Value<int> id,
+  required String category,
+  required int animeId,
+  required String title,
+  required String body,
+  required DateTime createdAt,
+  Value<bool> read,
+});
+typedef $$NoticesTableUpdateCompanionBuilder = NoticesCompanion Function({
+  Value<int> id,
+  Value<String> category,
+  Value<int> animeId,
+  Value<String> title,
+  Value<String> body,
+  Value<DateTime> createdAt,
+  Value<bool> read,
+});
+
+class $$NoticesTableFilterComposer
+    extends Composer<_$AppDatabase, $NoticesTable> {
+  $$NoticesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get animeId => $composableBuilder(
+    column: $table.animeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get read => $composableBuilder(
+    column: $table.read,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$NoticesTableOrderingComposer
+    extends Composer<_$AppDatabase, $NoticesTable> {
+  $$NoticesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get animeId => $composableBuilder(
+    column: $table.animeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get read => $composableBuilder(
+    column: $table.read,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$NoticesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $NoticesTable> {
+  $$NoticesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<int> get animeId =>
+      $composableBuilder(column: $table.animeId, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get body =>
+      $composableBuilder(column: $table.body, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get read =>
+      $composableBuilder(column: $table.read, builder: (column) => column);
+}
+
+class $$NoticesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $NoticesTable,
+          Notice,
+          $$NoticesTableFilterComposer,
+          $$NoticesTableOrderingComposer,
+          $$NoticesTableAnnotationComposer,
+          $$NoticesTableCreateCompanionBuilder,
+          $$NoticesTableUpdateCompanionBuilder,
+          (Notice, BaseReferences<_$AppDatabase, $NoticesTable, Notice>),
+          Notice,
+          PrefetchHooks Function()
+        > {
+  $$NoticesTableTableManager(_$AppDatabase db, $NoticesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$NoticesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$NoticesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$NoticesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> category = const Value.absent(),
+                Value<int> animeId = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> body = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> read = const Value.absent(),
+              }) => NoticesCompanion(
+                id: id,
+                category: category,
+                animeId: animeId,
+                title: title,
+                body: body,
+                createdAt: createdAt,
+                read: read,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String category,
+                required int animeId,
+                required String title,
+                required String body,
+                required DateTime createdAt,
+                Value<bool> read = const Value.absent(),
+              }) => NoticesCompanion.insert(
+                id: id,
+                category: category,
+                animeId: animeId,
+                title: title,
+                body: body,
+                createdAt: createdAt,
+                read: read,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$NoticesTable, Notice>(table),
+                  BaseReferences<_$AppDatabase, $NoticesTable, Notice>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$NoticesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $NoticesTable,
+      Notice,
+      $$NoticesTableFilterComposer,
+      $$NoticesTableOrderingComposer,
+      $$NoticesTableAnnotationComposer,
+      $$NoticesTableCreateCompanionBuilder,
+      $$NoticesTableUpdateCompanionBuilder,
+      (Notice, BaseReferences<_$AppDatabase, $NoticesTable, Notice>),
+      Notice,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -10508,4 +11386,6 @@ class $AppDatabaseManager {
       $$WatchLinksTableTableManager(_db, _db.watchLinks);
   $$SiteEpisodesTableTableManager get siteEpisodes =>
       $$SiteEpisodesTableTableManager(_db, _db.siteEpisodes);
+  $$NoticesTableTableManager get notices =>
+      $$NoticesTableTableManager(_db, _db.notices);
 }

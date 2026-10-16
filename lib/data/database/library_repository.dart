@@ -243,16 +243,21 @@ class LibraryRepository {
       anime.id: anime,
   };
 
-  Future<Set<int>> trackedIds() async => {
+  /// Тайтлы, о новых сериях которых сообщать: включённые отдельно и, если
+  /// уведомления включены, «Смотрю» и «Хочу посмотреть».
+  Future<Set<int>> trackedIds({required bool byDefault}) async => {
     for (final entry
         in await (_db.select(_db.libraryEntries)..where(
               (entry) =>
                   entry.deletedAt.isNull() &
                   entry.muted.equals(false) &
-                  entry.status.isIn([
-                    WatchStatus.watching.name,
-                    WatchStatus.planned.name,
-                  ]),
+                  (entry.alertsOn.equals(true) |
+                      (byDefault
+                          ? entry.status.isIn([
+                              WatchStatus.watching.name,
+                              WatchStatus.planned.name,
+                            ])
+                          : const Constant(false))),
             ))
             .get())
       entry.animeId,
@@ -682,12 +687,19 @@ class LibraryRepository {
       );
 
   /// Включает или выключает уведомления тайтла.
-  Future<void> setMuted(int animeId, bool muted) =>
+  /// Включает или выключает уведомления тайтла отдельно от общей
+  /// настройки.
+  Future<void> setAlerts(
+    int animeId, {
+    required bool muted,
+    required bool alertsOn,
+  }) =>
       (_db.update(
         _db.libraryEntries,
       )..where((entry) => entry.animeId.equals(animeId))).write(
         LibraryEntriesCompanion(
           muted: Value(muted),
+          alertsOn: Value(alertsOn),
           updatedAt: Value(DateTime.now()),
         ),
       );

@@ -80,6 +80,32 @@ class NewFranchisePart extends ReleaseEvent {
   final String? airedOn;
 }
 
+/// Начало показа новой части франшизы.
+class SeasonStarted extends ReleaseEvent {
+  const SeasonStarted({
+    required super.animeId,
+    required super.title,
+    required this.franchise,
+  });
+
+  final String franchise;
+}
+
+/// Категория уведомления в центре уведомлений.
+enum NoticeCategory {
+  episodes('Серии'),
+  seasons('Сезоны');
+
+  const NoticeCategory(this.label);
+
+  final String label;
+
+  static NoticeCategory of(ReleaseEvent event) => switch (event) {
+    NewFranchisePart() || SeasonStarted() => seasons,
+    _ => episodes,
+  };
+}
+
 /// Изменения тайтла после обновления.
 List<ReleaseEvent> releaseEvents(Anime before, AnimeInfo after) {
   if (before.release.isReleased) return const [];
@@ -155,6 +181,10 @@ List<ReleaseEvent> releaseEvents(Anime before, AnimeInfo after) {
         _ => null,
       },
     ].whereType<String>().join(' · '),
+  ),
+  SeasonStarted(:final franchise) => (
+    title: 'Начался показ: «${event.title}»',
+    body: 'Франшиза «$franchise»',
   ),
 };
 
