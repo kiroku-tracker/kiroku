@@ -294,12 +294,12 @@ class AppDatabase extends _$AppDatabase {
     onCreate: (migrator) => migrator.createAll(),
     onUpgrade: (migrator, from, to) async {
       if (from < 2) {
-        await migrator.addColumn(animes, animes.description);
-        await migrator.addColumn(animes, animes.genres);
-        await migrator.addColumn(animes, animes.studios);
-        await migrator.addColumn(animes, animes.episodeDuration);
-        await migrator.addColumn(animes, animes.ageRating);
-        await migrator.addColumn(animes, animes.detailsLoadedAt);
+        await _addColumn(migrator, animes, animes.description);
+        await _addColumn(migrator, animes, animes.genres);
+        await _addColumn(migrator, animes, animes.studios);
+        await _addColumn(migrator, animes, animes.episodeDuration);
+        await _addColumn(migrator, animes, animes.ageRating);
+        await _addColumn(migrator, animes, animes.detailsLoadedAt);
         await migrator.createTable(watchCycles);
         await migrator.createTable(watchEvents);
       }
@@ -307,8 +307,9 @@ class AppDatabase extends _$AppDatabase {
         await migrator.createTable(appSettings);
       }
       if (from < 4) {
-        await migrator.addColumn(animes, animes.franchise);
-        await migrator.addColumn(
+        await _addColumn(migrator, animes, animes.franchise);
+        await _addColumn(
+          migrator,
           libraryEntries,
           libraryEntries.franchiseOverride,
         );
@@ -320,25 +321,25 @@ class AppDatabase extends _$AppDatabase {
         await migrator.createTable(watchQueueItems);
       }
       if (from < 5) {
-        await migrator.addColumn(libraryEntries, libraryEntries.muted);
+        await _addColumn(migrator, libraryEntries, libraryEntries.muted);
       }
       if (from < 6) {
         await migrator.createTable(watchLinks);
       }
       if (from < 7) {
-        await migrator.addColumn(watchEvents, watchEvents.source);
-        await migrator.addColumn(libraryEntries, libraryEntries.dubbing);
+        await _addColumn(migrator, watchEvents, watchEvents.source);
+        await _addColumn(migrator, libraryEntries, libraryEntries.dubbing);
         await migrator.createTable(siteEpisodes);
       }
       if (from < 8) {
-        await migrator.addColumn(libraryEntries, libraryEntries.dubbingSeen);
-        await migrator.addColumn(franchises, franchises.dubbing);
-        await migrator.addColumn(franchises, franchises.dubbingSeen);
+        await _addColumn(migrator, libraryEntries, libraryEntries.dubbingSeen);
+        await _addColumn(migrator, franchises, franchises.dubbing);
+        await _addColumn(migrator, franchises, franchises.dubbingSeen);
       }
       if (from < 9) {
-        await migrator.addColumn(libraryEntries, libraryEntries.alertsOn);
-        await migrator.addColumn(franchises, franchises.muted);
-        await migrator.addColumn(franchises, franchises.alertsOn);
+        await _addColumn(migrator, libraryEntries, libraryEntries.alertsOn);
+        await _addColumn(migrator, franchises, franchises.muted);
+        await _addColumn(migrator, franchises, franchises.alertsOn);
         await migrator.createTable(notices);
       }
       if (from < 10) {
@@ -352,6 +353,20 @@ class AppDatabase extends _$AppDatabase {
       await customStatement('PRAGMA foreign_keys = ON');
     },
   );
+
+  /// Добавляет колонку, если её ещё нет: базу могла открыть старая версия
+  /// Kiroku и вернуть прежний номер схемы.
+  Future<void> _addColumn(
+    Migrator migrator,
+    TableInfo<Table, dynamic> table,
+    GeneratedColumn<Object> column,
+  ) async {
+    final columns = await customSelect(
+      'PRAGMA table_info("${table.actualTableName}")',
+    ).get();
+    if (columns.any((row) => row.read<String>('name') == column.name)) return;
+    await migrator.addColumn(table, column);
+  }
 
   static QueryExecutor _openConnection() {
     return driftDatabase(
