@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import 'context_menu_area.dart';
 import 'interactive_card.dart';
 import 'poster.dart';
 
@@ -18,6 +19,7 @@ class PosterCard extends StatelessWidget {
     this.posterBadge,
     this.posterBadgeEnd,
     this.cover,
+    this.menu,
   });
 
   final String? posterUrl;
@@ -35,6 +37,8 @@ class PosterCard extends StatelessWidget {
   final Widget? posterBadgeEnd;
 
   final Widget? cover;
+
+  final List<Widget> Function()? menu;
 
   static const _padding = 14.0;
   static const _titleHeight = 44.0;
@@ -57,6 +61,12 @@ class PosterCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final menu = this.menu;
+    final card = _card();
+    return menu == null ? card : ContextMenuArea(items: menu, child: card);
+  }
+
+  Widget _card() {
     return InteractiveCard(
       onTap: onTap,
       semanticLabel: 'Открыть: $title',

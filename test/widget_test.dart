@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:drift/native.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -179,6 +180,9 @@ void main() {
 
     await tester.tap(find.text('Провожающая в последний путь Фрирен').first);
     await settle(tester);
+    expect(find.text('Смотреть · серия 1'), findsOneWidget);
+    await tester.tap(find.byTooltip('Редактировать отметки'));
+    await settle(tester);
     final tile = find.descendant(
       of: find.byType(Wrap),
       matching: find.text('1'),
@@ -207,11 +211,16 @@ void main() {
     await pumpApp(tester);
 
     expect(find.text('Продолжить просмотр'), findsOneWidget);
-    expect(find.text('Серия 2'), findsNWidgets(2));
-    await tester.tap(find.text('Серия 2').first);
+    expect(find.text('Смотреть · серия 2'), findsNWidgets(2));
+    await tester.tap(
+      find.text('Смотреть · серия 2').first,
+      buttons: kSecondaryMouseButton,
+    );
+    await settle(tester);
+    await tester.tap(find.text('Отметить серию 2'));
     await settle(tester);
     expect(find.text('Серия 2 отмечена'), findsOneWidget);
-    expect(find.text('Серия 3'), findsNWidgets(2));
+    expect(find.text('Смотреть · серия 3'), findsNWidgets(2));
 
     await tester.tap(find.byTooltip('Таблица'));
     await settle(tester);

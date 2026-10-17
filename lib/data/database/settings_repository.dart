@@ -118,7 +118,7 @@ class AppPrefs {
     this.checkUpdates = true,
     this.discord = false,
     this.discordSitesOff = const {},
-    this.watchInApp = false,
+    this.watchInApp = true,
     this.hideSpoilers = true,
   });
 
@@ -142,7 +142,7 @@ class AppPrefs {
     autoAdd: settings['autoMark.add'] != 'false',
     checkUpdates: settings['updates.check'] != 'false',
     discord: settings['discord.enabled'] == 'true',
-    watchInApp: settings['watch.inApp'] == 'true',
+    watchInApp: settings['watch.inApp'] != 'false',
     hideSpoilers: settings['watch.hideSpoilers'] != 'false',
     discordSitesOff: {
       for (final site in (settings['discord.sitesOff'] ?? '').split('|'))

@@ -10,9 +10,8 @@ import '../../data/database/app_database.dart';
 import '../../data/database/franchise_rules.dart';
 import '../../data/database/watch_status.dart';
 import '../../data/providers.dart';
-import '../library/library_actions.dart';
 import '../library/library_filter.dart';
-import '../watch/watch_actions.dart';
+import '../watch/watch_next_button.dart';
 import 'franchise_screen.dart';
 
 class FranchiseCard extends ConsumerWidget {
@@ -72,6 +71,13 @@ class FranchiseCard extends ConsumerWidget {
       ),
       extra: ProgressBar(value: unit.completedCount / total),
       onTap: () => openFranchise(context, key: unit.key, backLabel: backLabel),
+      menu: next == null
+          ? null
+          : () => titleCardMenu(
+              ref,
+              next,
+              markSuffix: ' · часть ${unit.items.indexOf(next) + 1}',
+            ),
       action: next == null
           ? OutlinedButton.icon(
               onPressed: () =>
@@ -79,39 +85,14 @@ class FranchiseCard extends ConsumerWidget {
               icon: const Icon(LucideIcons.listOrdered),
               label: const Text('Порядок просмотра'),
             )
-          : Row(
-              children: [
-                Tooltip(
-                  message: 'Смотреть',
-                  child: FilledButton(
-                    onPressed: () => watchTitle(ref, next.anime),
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size.square(40),
-                      padding: EdgeInsets.zero,
-                    ),
-                    child: const Icon(LucideIcons.play, size: 17),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Tooltip(
-                    message: next.anime.title,
-                    child: OutlinedButton.icon(
-                      onPressed: () => markNextEpisode(
-                        ref,
-                        animeId: next.anime.id,
-                        title: next.anime.title,
-                      ),
-                      icon: const Icon(LucideIcons.circleCheck),
-                      label: Text(
-                        'Серия ${next.progress.nextEpisode} · '
-                        'часть ${unit.items.indexOf(next) + 1}',
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+          : Tooltip(
+              message: next.anime.title,
+              child: WatchNextButton(
+                anime: next.anime,
+                status: next.status,
+                next: next.progress.nextEpisode,
+                watched: next.progress.watched,
+              ),
             ),
     );
   }

@@ -30,10 +30,10 @@ import '../franchise/title_franchise_panel.dart';
 import '../library/add_to_library_button.dart';
 import '../library/entry_status_button.dart';
 import '../library/library_actions.dart';
-import '../library/next_episode_button.dart';
 import '../notifications/alerts_button.dart';
 import '../notifications/site_line.dart';
 import '../watch/watch_button.dart';
+import '../watch/watch_next_button.dart';
 import 'episodes_panel.dart';
 import 'history_panel.dart';
 import 'note_panel.dart';
@@ -153,7 +153,14 @@ class _TitleScreenState extends ConsumerState<TitleScreen> {
               if (anime != null && entry != null)
                 TitleAlertsButton(anime: anime, entry: entry),
               if (anime != null)
-                _MoreMenu(anime: anime, entry: entry, canRestart: canRestart),
+                _MoreMenu(
+                  anime: anime,
+                  entry: entry,
+                  canRestart: canRestart,
+                  markNext: entry == null
+                      ? null
+                      : _markable(anime, viewing.events.keys.toSet()),
+                ),
             ],
           ),
           const SizedBox(height: 14),
@@ -378,12 +385,14 @@ class _Hero extends ConsumerWidget {
                     ),
                     WatchButton(anime: anime, primary: false),
                   ] else ...[
-                    WatchButton(anime: anime),
-                    NextEpisodeButton(
+                    WatchButton(
                       anime: anime,
-                      status: WatchStatus.fromName(entry!.status),
-                      next: _firstUnwatched(viewing.events.keys.toSet()),
-                      watched: viewing.events.length,
+                      next: WatchNext.of(
+                        anime,
+                        status: WatchStatus.fromName(entry!.status),
+                        next: _firstUnwatched(viewing.events.keys.toSet()),
+                        watched: viewing.events.length,
+                      ),
                     ),
                   ],
                 ],
@@ -439,6 +448,7 @@ class _MoreMenu extends ConsumerWidget {
     required this.anime,
     required this.entry,
     required this.canRestart,
+    this.markNext,
   });
 
   final Anime anime;
@@ -446,6 +456,8 @@ class _MoreMenu extends ConsumerWidget {
   final LibraryEntry? entry;
 
   final bool canRestart;
+
+  final int? markNext;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -455,6 +467,14 @@ class _MoreMenu extends ConsumerWidget {
       style: AppTheme.menuStyle,
       alignmentOffset: const Offset(-216, 6),
       menuChildren: [
+        if (markNext case final episode?)
+          AppMenuItem(
+            label: 'Отметить серию $episode',
+            icon: LucideIcons.circleCheck,
+            color: AppColors.menuItemText,
+            onPressed: () =>
+                markNextEpisode(ref, animeId: anime.id, title: anime.title),
+          ),
         AppMenuItem(
           label: 'Открыть на Shikimori',
           icon: LucideIcons.externalLink,
@@ -908,6 +928,13 @@ class _TextLinkState extends State<_TextLink> {
 }
 
 /// Первая неотмеченная серия.
+/// Следующая серия, если её можно отметить: она уже вышла.
+int? _markable(Anime anime, Set<int> watched) {
+  final release = anime.release;
+  final next = _firstUnwatched(watched);
+  return release.isAnnounced || next > release.availableEpisodes ? null : next;
+}
+
 int _firstUnwatched(Set<int> watched) {
   var next = 1;
   while (watched.contains(next)) {

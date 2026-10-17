@@ -9,13 +9,21 @@ import '../../core/widgets/status_menu.dart';
 import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
 import 'watch_actions.dart';
+import 'watch_next_button.dart';
 
 class WatchButton extends ConsumerStatefulWidget {
-  const WatchButton({super.key, required this.anime, this.primary = true});
+  const WatchButton({
+    super.key,
+    required this.anime,
+    this.primary = true,
+    this.next,
+  });
 
   final Anime anime;
 
   final bool primary;
+
+  final WatchNext? next;
 
   @override
   ConsumerState<WatchButton> createState() => _WatchButtonState();
@@ -39,9 +47,18 @@ class _WatchButtonState extends ConsumerState<WatchButton> {
     final links = ref.watch(watchLinksProvider(anime.id)).value ?? const [];
     final source = ref.watch(watchSourceProvider);
     final primary = widget.primary;
-    final tooltip = links.isEmpty
-        ? 'Открыть на ${source.name}'
-        : 'Открыть свою ссылку «${links.first.label}»';
+    final next = widget.next;
+    final tooltip =
+        next?.tooltip ??
+        (links.isEmpty
+            ? 'Открыть на ${source.name}'
+            : 'Открыть свою ссылку «${links.first.label}»');
+    final Future<void> Function()? watch = next == null
+        ? () => watchTitle(ref, anime)
+        : next.episode == null
+        ? null
+        : () => runWatchNext(ref, anime, next);
+    final label = Text(next?.label ?? 'Смотреть');
 
     const leftRadius = BorderRadius.horizontal(left: Radius.circular(9));
     const rightRadius = BorderRadius.horizontal(right: Radius.circular(9));
@@ -61,25 +78,21 @@ class _WatchButtonState extends ConsumerState<WatchButton> {
               color: primary ? Colors.white : AppColors.accentText,
             ),
           )
-        : const Icon(LucideIcons.play);
+        : Icon(next?.icon ?? LucideIcons.play);
     final main = Tooltip(
       message: tooltip,
       child: primary
           ? FilledButton.icon(
-              onPressed: _busy
-                  ? null
-                  : () => _run(() => watchTitle(ref, anime)),
+              onPressed: _busy || watch == null ? null : () => _run(watch),
               style: half(leftRadius),
               icon: icon,
-              label: const Text('Смотреть'),
+              label: label,
             )
           : OutlinedButton.icon(
-              onPressed: _busy
-                  ? null
-                  : () => _run(() => watchTitle(ref, anime)),
+              onPressed: _busy || watch == null ? null : () => _run(watch),
               style: half(leftRadius),
               icon: icon,
-              label: const Text('Смотреть'),
+              label: label,
             ),
     );
 

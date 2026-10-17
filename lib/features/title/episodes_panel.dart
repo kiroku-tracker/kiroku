@@ -16,6 +16,7 @@ import '../../core/widgets/status_menu.dart';
 import '../../data/database/app_database.dart';
 import '../../data/database/library_repository.dart';
 import '../library/library_actions.dart';
+import '../watch/watch_actions.dart';
 
 /// Блок «Серии» на странице тайтла.
 class EpisodesPanel extends ConsumerStatefulWidget {
@@ -49,6 +50,7 @@ class _EpisodesPanelState extends ConsumerState<EpisodesPanel> {
   final _menuController = MenuController();
   final _gridKey = GlobalKey();
   _View _view = _View.tiles;
+  bool _editing = false;
   int? _rangeIndex;
   int? _anchor;
   int? _menuEpisode;
@@ -81,6 +83,14 @@ class _EpisodesPanelState extends ConsumerState<EpisodesPanel> {
     return max(declared, marked);
   }
 
+  int get _firstUnwatched {
+    var episode = 1;
+    while (_events.containsKey(episode)) {
+      episode++;
+    }
+    return episode;
+  }
+
   Set<int> get _previouslyWatched => {
     for (final cycle in widget.history)
       if (cycle != _current) ...cycle.events.keys,
@@ -90,10 +100,7 @@ class _EpisodesPanelState extends ConsumerState<EpisodesPanel> {
   Widget build(BuildContext context) {
     final total = _total;
     final ranges = (total / _rangeSize).ceil();
-    var firstUnwatched = 1;
-    while (_events.containsKey(firstUnwatched)) {
-      firstUnwatched++;
-    }
+    final firstUnwatched = _firstUnwatched;
     final rangeIndex = (_rangeIndex ?? (firstUnwatched - 1) ~/ _rangeSize)
         .clamp(0, max(ranges - 1, 0))
         .toInt();
@@ -105,6 +112,15 @@ class _EpisodesPanelState extends ConsumerState<EpisodesPanel> {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (_isCurrent && _view == _View.tiles) ...[
+            IconToggle(
+              icon: LucideIcons.pencil,
+              tooltip: 'Редактировать отметки',
+              active: _editing,
+              onTap: () => setState(() => _editing = !_editing),
+            ),
+            const SizedBox(width: 12),
+          ],
           IconToggle(
             icon: LucideIcons.grid3x3,
             tooltip: 'Плитки',
@@ -158,10 +174,13 @@ class _EpisodesPanelState extends ConsumerState<EpisodesPanel> {
               _buildDates(from, to),
             if (_view == _View.tiles && _isCurrent) ...[
               const SizedBox(height: 12),
-              const Text(
-                'Клик: отметить или снять. Shift+клик: несколько подряд. '
-                'Правый клик: дата и другие действия.',
-                style: TextStyle(color: AppColors.muted, fontSize: 12),
+              Text(
+                _editing
+                    ? 'Клик: отметить или снять. Shift+клик: несколько подряд. '
+                          'Правый клик: дата и другие действия.'
+                    : 'Клик: смотреть серию. Правый клик: отметить и другие '
+                          'действия.',
+                style: const TextStyle(color: AppColors.muted, fontSize: 12),
               ),
             ],
           ],
@@ -173,6 +192,7 @@ class _EpisodesPanelState extends ConsumerState<EpisodesPanel> {
   Widget _buildTiles(int from, int to) {
     final release = widget.anime.release;
     final previous = _isCurrent ? _previouslyWatched : const <int>{};
+    final next = _isCurrent && !_editing ? _firstUnwatched : null;
     return AppMenuAnchor(
       controller: _menuController,
       style: AppTheme.menuStyle,
@@ -201,9 +221,13 @@ class _EpisodesPanelState extends ConsumerState<EpisodesPanel> {
                   watchedBefore: previous.contains(episode),
                   unaired: release.isUnaired(episode),
                   extra: release.episodes > 0 && episode > release.episodes,
-                  enabled: _isCurrent,
+                  enabled:
+                      _isCurrent && (_editing || !release.isUnaired(episode)),
+                  next: episode == next && !release.isUnaired(episode),
                   tooltip: _tooltip(episode),
-                  onTap: () => _onTap(episode),
+                  onTap: () => _editing
+                      ? _onTap(episode)
+                      : watchEpisode(ref, widget.anime, episode),
                   onSecondaryTap: (globalPosition) {
                     final box =
                         _gridKey.currentContext?.findRenderObject()
@@ -309,6 +333,13 @@ class _EpisodesPanelState extends ConsumerState<EpisodesPanel> {
     final hasGapBefore = [for (var e = 1; e < episode; e++) e]
         .any((e) => !_events.containsKey(e));
     return [
+      if (!anime.release.isUnaired(episode))
+        AppMenuItem(
+          label: 'Смотреть серию $episode',
+          icon: LucideIcons.play,
+          color: AppColors.menuItemText,
+          onPressed: () => watchEpisode(ref, anime, episode),
+        ),
       if (event != null) ...[
         AppMenuItem(
           label: 'Указать дату просмотра…',
@@ -501,6 +532,7 @@ class _EpisodeTile extends StatefulWidget {
     required this.tooltip,
     required this.onTap,
     required this.onSecondaryTap,
+    this.next = false,
   });
 
   final double width;
@@ -511,6 +543,8 @@ class _EpisodeTile extends StatefulWidget {
 
   final bool extra;
   final bool enabled;
+
+  final bool next;
   final String tooltip;
   final VoidCallback onTap;
   final ValueChanged<Offset> onSecondaryTap;
@@ -559,9 +593,12 @@ class _EpisodeTileState extends State<_EpisodeTile> {
     final hovered = _hovered && widget.enabled;
     final borderColor = widget.extra
         ? AppColors.dangerText
-        : hovered
+        : hovered || widget.next
         ? const Color(0xFF8B78F0)
         : border;
+    final textColor = (hovered || widget.next) && !watched
+        ? Colors.white
+        : text;
 
     return Tooltip(
       message: widget.tooltip,
@@ -589,12 +626,21 @@ class _EpisodeTileState extends State<_EpisodeTile> {
                 borderRadius: BorderRadius.circular(8),
                 border: widget.unaired ? null : Border.all(color: borderColor),
               ),
-              child: Text(
-                '${widget.episode}',
-                style: TextStyle(
-                  color: hovered && !watched ? Colors.white : text,
-                  fontWeight: FontWeight.w700,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.next) ...[
+                    Icon(LucideIcons.play, size: 12, color: textColor),
+                    const SizedBox(width: 4),
+                  ],
+                  Text(
+                    '${widget.episode}',
+                    style: TextStyle(
+                      color: textColor,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

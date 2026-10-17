@@ -24,19 +24,41 @@ Future<void> watchTitle(WidgetRef ref, Anime anime) async {
   await watchOnSite(ref, anime);
 }
 
+/// Открывает серию тайтла: во встроенном плеере сразу её, в браузере
+/// страницу тайтла.
+Future<void> watchEpisode(WidgetRef ref, Anime anime, int episode) async {
+  final links = await ref
+      .read(watchLinksRepositoryProvider)
+      .watchLinks(anime.id)
+      .first;
+  if (links.isNotEmpty) {
+    await _open(ref, Uri.parse(links.first.url), title: anime.title);
+    return;
+  }
+  await watchOnSite(ref, anime, episode: episode);
+}
+
 /// Открывает тайтл на сайте по умолчанию: в Kiroku или в браузере.
-Future<void> watchOnSite(WidgetRef ref, Anime anime, {bool? inApp}) async {
+Future<void> watchOnSite(
+  WidgetRef ref,
+  Anime anime, {
+  bool? inApp,
+  int? episode,
+}) async {
   final source = ref.read(watchSourceProvider);
   final target = await source.resolve(
     shikimoriId: anime.id,
     title: anime.title,
   );
+  final choice = await _choice(ref, anime);
   await _open(
     ref,
     target.uri,
     title: anime.title,
     inApp: inApp,
-    choice: await _choice(ref, anime),
+    choice: episode == null
+        ? choice
+        : (episode: episode, dubbing: choice.dubbing),
     animeId: anime.id,
   );
   if (!target.found) {
@@ -70,7 +92,7 @@ Future<void> _open(
   WatchChoice? choice,
   int? animeId,
 }) async {
-  if (inApp ?? ref.read(appPrefsProvider).value?.watchInApp ?? false) {
+  if (inApp ?? ref.read(appPrefsProvider).value?.watchInApp ?? true) {
     final dubbing = choice?.dubbing;
     ref
         .read(playerSessionProvider.notifier)

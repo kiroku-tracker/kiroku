@@ -25,8 +25,7 @@ import 'entry_status_button.dart';
 import 'library_filter.dart';
 import 'library_table.dart';
 import 'library_toolbar.dart';
-import 'next_episode_button.dart';
-import '../watch/watch_actions.dart';
+import '../watch/watch_next_button.dart';
 
 class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
@@ -235,7 +234,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
 }
 
 /// Карточка тайтла в библиотеке.
-class LibraryTitleCard extends StatelessWidget {
+class LibraryTitleCard extends ConsumerWidget {
   const LibraryTitleCard({
     super.key,
     required this.item,
@@ -250,7 +249,7 @@ class LibraryTitleCard extends StatelessWidget {
   final String? franchiseName;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final anime = item.anime;
     final release = anime.release;
     final available = release.availableEpisodes;
@@ -284,32 +283,12 @@ class LibraryTitleCard extends StatelessWidget {
         value: available == 0 ? 0 : item.progress.watched / available,
       ),
       onTap: () => openTitle(context, animeId: anime.id, backLabel: backLabel),
-      action: Row(
-        children: [
-          Tooltip(
-            message: 'Смотреть',
-            child: Consumer(
-              builder: (context, ref, _) => FilledButton(
-                onPressed: () => watchTitle(ref, anime),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.square(40),
-                  padding: EdgeInsets.zero,
-                ),
-                child: const Icon(LucideIcons.play, size: 17),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: NextEpisodeButton(
-              anime: anime,
-              status: item.status,
-              next: item.progress.nextEpisode,
-              watched: item.progress.watched,
-              short: true,
-            ),
-          ),
-        ],
+      menu: () => titleCardMenu(ref, item),
+      action: WatchNextButton(
+        anime: anime,
+        status: item.status,
+        next: item.progress.nextEpisode,
+        watched: item.progress.watched,
       ),
     );
   }
