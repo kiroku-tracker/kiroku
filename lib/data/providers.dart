@@ -5,6 +5,7 @@ import 'database/franchise_repository.dart';
 import 'database/franchise_rules.dart';
 import 'database/library_repository.dart';
 import 'database/notices_repository.dart';
+import 'database/party_history_repository.dart';
 import 'database/queue_repository.dart';
 import 'database/settings_repository.dart';
 import 'database/user_groups_repository.dart';
@@ -149,6 +150,18 @@ final noticesProvider = StreamProvider<List<Notice>>(
 
 final unreadNoticesProvider = StreamProvider<int>(
   (ref) => ref.watch(noticesRepositoryProvider).watchUnread(),
+);
+
+final partyHistoryRepositoryProvider = Provider<PartyHistoryRepository>(
+  (ref) => PartyHistoryRepository(ref.watch(databaseProvider)),
+);
+
+final partyHistoryProvider = StreamProvider<List<PartySession>>(
+  (ref) => ref.watch(partyHistoryRepositoryProvider).watchAll(),
+);
+
+final partyPeopleProvider = StreamProvider<Map<String, String>>(
+  (ref) => ref.watch(partyHistoryRepositoryProvider).watchPeople(),
 );
 
 final userGroupsRepositoryProvider = Provider<UserGroupsRepository>(

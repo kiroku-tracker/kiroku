@@ -227,6 +227,38 @@ class Notices extends Table {
   BoolColumn get read => boolean().withDefault(const Constant(false))();
 }
 
+/// Сеансы совместного просмотра: что, с кем и до какой серии смотрели.
+class PartySessions extends Table {
+  TextColumn get id => text()();
+
+  TextColumn get role => text()();
+  TextColumn get address => text().withDefault(const Constant(''))();
+  IntColumn get animeId => integer().nullable()();
+  TextColumn get title => text()();
+  TextColumn get uri => text()();
+  IntColumn get episodeFrom => integer().nullable()();
+  IntColumn get episodeTo => integer().nullable()();
+  RealColumn get position => real().withDefault(const Constant(0))();
+
+  TextColumn get people => text().withDefault(const Constant(''))();
+  DateTimeColumn get startedAt => dateTime()();
+  DateTimeColumn get endedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Люди из совместного просмотра: постоянный номер их Kiroku и последнее
+/// имя.
+class PartyPeople extends Table {
+  TextColumn get uid => text()();
+  TextColumn get name => text()();
+  DateTimeColumn get seenAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {uid};
+}
+
 @DriftDatabase(
   tables: [
     Animes,
@@ -243,6 +275,8 @@ class Notices extends Table {
     WatchLinks,
     SiteEpisodes,
     Notices,
+    PartySessions,
+    PartyPeople,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -251,7 +285,7 @@ class AppDatabase extends _$AppDatabase {
   @override
   int get schemaVersion => currentSchema;
 
-  static const currentSchema = 9;
+  static const currentSchema = 11;
 
   static const fileName = 'kiroku';
 
@@ -306,6 +340,12 @@ class AppDatabase extends _$AppDatabase {
         await migrator.addColumn(franchises, franchises.muted);
         await migrator.addColumn(franchises, franchises.alertsOn);
         await migrator.createTable(notices);
+      }
+      if (from < 10) {
+        await migrator.createTable(partySessions);
+      }
+      if (from < 11) {
+        await migrator.createTable(partyPeople);
       }
     },
     beforeOpen: (details) async {

@@ -120,6 +120,10 @@ class AppPrefs {
     this.discordSitesOff = const {},
     this.watchInApp = true,
     this.hideSpoilers = true,
+    this.partyNetwork = PartyNetwork.vpn,
+    this.partyAddress = '',
+    this.partyName = '',
+    this.partyGuestRights = const {PartyRight.pause, PartyRight.seek},
   });
 
   factory AppPrefs.fromSettings(Map<String, String> settings) => AppPrefs(
@@ -144,6 +148,13 @@ class AppPrefs {
     discord: settings['discord.enabled'] == 'true',
     watchInApp: settings['watch.inApp'] != 'false',
     hideSpoilers: settings['watch.hideSpoilers'] != 'false',
+    partyNetwork: PartyNetwork.values.firstWhere(
+      (network) => network.name == settings['party.network'],
+      orElse: () => PartyNetwork.vpn,
+    ),
+    partyAddress: settings['party.address'] ?? '',
+    partyName: settings['party.name'] ?? '',
+    partyGuestRights: partyRightsOf(settings['party.guestRights']),
     discordSitesOff: {
       for (final site in (settings['discord.sitesOff'] ?? '').split('|'))
         if (site.isNotEmpty) site,
@@ -184,6 +195,15 @@ class AppPrefs {
 
   final bool hideSpoilers;
 
+  final PartyNetwork partyNetwork;
+
+  final String partyAddress;
+
+  final String partyName;
+
+  /// Права новых гостей в своей комнате.
+  final Set<PartyRight> partyGuestRights;
+
   YummyHost get effectiveYummyHost => yummyHost ?? YummyHost.ru;
 
   Map<String, String> toSettings() => {
@@ -203,6 +223,10 @@ class AppPrefs {
     'discord.enabled': '$discord',
     'watch.inApp': '$watchInApp',
     'watch.hideSpoilers': '$hideSpoilers',
+    'party.network': partyNetwork.name,
+    'party.address': partyAddress,
+    'party.name': partyName,
+    'party.guestRights': partyRightsText(partyGuestRights),
     'discord.sitesOff': discordSitesOff.join('|'),
   };
 
@@ -224,6 +248,10 @@ class AppPrefs {
     Set<String>? discordSitesOff,
     bool? watchInApp,
     bool? hideSpoilers,
+    PartyNetwork? partyNetwork,
+    String? partyAddress,
+    String? partyName,
+    Set<PartyRight>? partyGuestRights,
   }) => AppPrefs(
     closeToTray: closeToTray ?? this.closeToTray,
     notifyEpisodes: notifyEpisodes ?? this.notifyEpisodes,
@@ -242,8 +270,50 @@ class AppPrefs {
     discordSitesOff: discordSitesOff ?? this.discordSitesOff,
     watchInApp: watchInApp ?? this.watchInApp,
     hideSpoilers: hideSpoilers ?? this.hideSpoilers,
+    partyNetwork: partyNetwork ?? this.partyNetwork,
+    partyAddress: partyAddress ?? this.partyAddress,
+    partyName: partyName ?? this.partyName,
+    partyGuestRights: partyGuestRights ?? this.partyGuestRights,
   );
 }
+
+/// Сеть для совместного просмотра.
+enum PartyNetwork {
+  vpn('Виртуальная сеть'),
+  custom('Свой адрес');
+
+  const PartyNetwork(this.label);
+
+  final String label;
+}
+
+/// Что гость может делать с общим просмотром.
+enum PartyRight {
+  pause('Пауза и продолжение', 'пауза'),
+  seek('Перемотка', 'перемотка'),
+  episode('Выбор серии и озвучки', 'выбор серии');
+
+  const PartyRight(this.label, this.short);
+
+  final String label;
+  final String short;
+}
+
+/// Права из строки настроек; без строки пауза и перемотка.
+Set<PartyRight> partyRightsOf(String? text) {
+  if (text == null) return const {PartyRight.pause, PartyRight.seek};
+  final names = text.split(',');
+  return {
+    for (final right in PartyRight.values)
+      if (names.contains(right.name)) right,
+  };
+}
+
+/// Права строкой для настроек.
+String partyRightsText(Set<PartyRight> rights) => [
+  for (final right in PartyRight.values)
+    if (rights.contains(right)) right.name,
+].join(',');
 
 enum YummyHost {
   ru('ru.yummyani.me', 'Новый дизайн'),

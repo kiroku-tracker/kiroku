@@ -65,6 +65,9 @@ class DiscordRpc {
   static final _closeHandle = _kernel
       .lookupFunction<Int32 Function(IntPtr), int Function(int)>('CloseHandle');
 
+  /// Имя пользователя Discord из ответа на подключение.
+  String? userName;
+
   /// Подключается к запущенному Discord. false — Discord не запущен.
   Future<bool> connect() async {
     if (connected) return true;
@@ -185,7 +188,17 @@ class DiscordRpc {
   Future<bool> _waitFor(String event) async {
     for (var i = 0; i < 40; i++) {
       for (final frame in _read()) {
-        if (frame['evt'] == event) return true;
+        if (frame['evt'] == event) {
+          final data = frame['data'];
+          final user = data is Map ? data['user'] : null;
+          if (user is Map) {
+            final name = user['global_name'] ?? user['username'];
+            if (name is String && name.trim().isNotEmpty) {
+              userName = name.trim();
+            }
+          }
+          return true;
+        }
         if (frame['evt'] == 'ERROR' || frame.containsKey('code')) return false;
       }
       await Future<void>.delayed(const Duration(milliseconds: 50));

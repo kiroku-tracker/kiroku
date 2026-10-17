@@ -18,6 +18,7 @@ import '../../system/discord_presence.dart';
 import '../../system/updates.dart';
 import '../autotrack/auto_marker.dart';
 import '../import/shikimori_import.dart';
+import '../party/party_address.dart';
 import '../updates/update_dialog.dart';
 import 'data_transfer.dart';
 
@@ -125,20 +126,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SettingRow(
-                  title: 'Отмечать серии самостоятельно',
+                  title: 'Отмечать досмотренные серии',
                   text:
-                      'Досмотренная серия на YummyAnime отмечается сама. '
-                      'Нужна активная вкладка в Chrome, Edge, Яндекс, Opera '
-                      'или Vivaldi.',
+                      'Во встроенном плеере и в браузерах Chrome, Edge, '
+                      'Яндекс, Opera, Vivaldi',
                   value: prefs.autoMark,
                   onChanged: (value) =>
                       change((prefs) => prefs.copyWith(autoMark: value)),
                 ),
                 SettingRow(
-                  title: 'Добавлять тайтл в начале просмотра',
-                  text:
-                      'Если его нет в библиотеке: сразу в «Смотрю». Иначе '
-                      'Kiroku спросит, когда серия досмотрена.',
+                  title: 'Добавлять тайтл при начале просмотра',
+                  text: 'Тайтл не из библиотеки попадает в «Смотрю»',
                   value: prefs.autoAdd,
                   enabled: prefs.autoMark,
                   sub: true,
@@ -147,9 +145,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 ChoiceRow(
                   title: 'Порог просмотра',
-                  text:
-                      'Когда серия считается досмотренной. Титры обычно '
-                      'занимают 5–10%.',
+                  text: 'Сколько серии нужно посмотреть для отметки',
                   enabled: prefs.autoMark,
                   sub: true,
                   control: SelectButton<int>(
@@ -167,7 +163,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   const SizedBox(height: 6),
                   _NowPlayingLine(threshold: prefs.autoMarkThreshold),
                   const SettingNote(
-                    'Если серия не распознана, Kiroku спросит в уведомлении.',
+                    'Нераспознанную серию Kiroku предложит отметить в '
+                    'уведомлении',
                   ),
                 ],
               ],
@@ -177,8 +174,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Panel(
             title: 'Библиотека',
             child: SettingRow(
-              title: 'Блок «Продолжить просмотр»',
-              text: 'Тайтлы с непросмотренными сериями над вкладками.',
+              title: 'Продолжить просмотр',
+              text: 'Тайтлы с новыми сериями над вкладками',
               value: prefs.showContinue,
               onChanged: (value) =>
                   change((prefs) => prefs.copyWith(showContinue: value)),
@@ -191,24 +188,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SettingRow(
-                  title: 'Открывать в Kiroku',
-                  text: '«Смотреть» открывает сайт внутри программы.',
+                  title: 'Встроенный плеер',
+                  text: '«Смотреть» открывает серию в Kiroku',
                   value: prefs.watchInApp,
                   onChanged: (value) =>
                       change((prefs) => prefs.copyWith(watchInApp: value)),
                 ),
                 SettingRow(
                   title: 'Скрывать спойлеры',
-                  text: 'Кадры серии в плеере не видны до запуска видео.',
+                  text: 'Кадры серии не видны до её запуска',
                   value: prefs.hideSpoilers,
                   onChanged: (value) =>
                       change((prefs) => prefs.copyWith(hideSpoilers: value)),
                 ),
                 ChoiceRow(
                   title: 'Сайт для просмотра',
-                  text:
-                      'Его открывает «Смотреть». Если у тайтла указана своя '
-                      'ссылка, откроется она.',
+                  text: 'У тайтла со своей ссылкой открывается она',
                   control: SelectButton<String>(
                     icon: LucideIcons.globe,
                     tooltip: 'Сайт для просмотра',
@@ -220,10 +215,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 ChoiceRow(
                   title: 'Дизайн YummyAnime',
-                  text: prefs.yummyHost == null
-                      ? 'Пока новый. Выберется сам при первом просмотре.'
-                      : 'Тайтлы открываются на '
-                            '${prefs.effectiveYummyHost.domain}.',
+                  text: 'Версия сайта для просмотра',
                   control: SelectButton<YummyHost>(
                     icon: LucideIcons.layoutTemplate,
                     tooltip: 'Дизайн YummyAnime',
@@ -239,13 +231,78 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const SizedBox(height: 18),
           Panel(
+            title: 'Совместный просмотр',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ChoiceRow(
+                  title: 'Сеть',
+                  text: 'Виртуальная сеть ($partyVpns) или свой адрес',
+                  control: SelectButton<PartyNetwork>(
+                    icon: LucideIcons.network,
+                    tooltip: 'Сеть',
+                    value: prefs.partyNetwork,
+                    options: PartyNetwork.values,
+                    labelOf: (network) => network.label,
+                    onChanged: (network) => change(
+                      (prefs) => prefs.copyWith(partyNetwork: network),
+                    ),
+                  ),
+                ),
+                ChoiceRow(
+                  title: 'Адрес комнаты',
+                  text: 'Порт по умолчанию $partyPort',
+                  enabled: prefs.partyNetwork == PartyNetwork.custom,
+                  sub: true,
+                  control: _PrefField(
+                    value: prefs.partyAddress,
+                    hint: '100.64.0.5:$partyPort',
+                    onSave: (value) =>
+                        change((prefs) => prefs.copyWith(partyAddress: value)),
+                  ),
+                ),
+                for (final (right, title, text) in const [
+                  (
+                    PartyRight.pause,
+                    'Пауза у гостей',
+                    'Пауза и продолжение у всех в комнате',
+                  ),
+                  (
+                    PartyRight.seek,
+                    'Перемотка у гостей',
+                    'Перемотка у всех в комнате',
+                  ),
+                  (
+                    PartyRight.episode,
+                    'Выбор серии у гостей',
+                    'Серия и озвучка тайтла комнаты',
+                  ),
+                ])
+                  SettingRow(
+                    title: title,
+                    text: text,
+                    value: prefs.partyGuestRights.contains(right),
+                    onChanged: (value) => change(
+                      (prefs) => prefs.copyWith(
+                        partyGuestRights: value
+                            ? {...prefs.partyGuestRights, right}
+                            : {...prefs.partyGuestRights}..remove(right),
+                      ),
+                    ),
+                  ),
+                const SettingNote('Права отдельного гостя меняются в комнате'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          Panel(
             title: 'Discord',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SettingRow(
                   title: 'Отображать просмотр в статусе',
-                  text: 'Тайтл и серия в профиле, пока серия играет.',
+                  text: 'Тайтл и серия, пока идёт видео',
                   value: prefs.discord,
                   onChanged: (value) =>
                       change((prefs) => prefs.copyWith(discord: value)),
@@ -253,7 +310,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 for (final site in discordSites)
                   SettingRow(
                     title: site,
-                    text: 'Просмотр на этом сайте попадает в статус.',
+                    text: 'Показывать просмотр с этого сайта',
                     value: !prefs.discordSitesOff.contains(site),
                     enabled: prefs.discord,
                     sub: true,
@@ -268,7 +325,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 if (prefs.discord)
                   const SettingNote(
                     'Группу, франшизу или тайтл можно скрыть в меню «…» на их '
-                    'странице.',
+                    'странице',
                   ),
               ],
             ),
@@ -282,8 +339,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ChoiceRow(
                   title: 'Импорт из Shikimori',
                   text:
-                      'Статусы, прогресс, оценки и заметки. По нику, без '
-                      'входа в аккаунт.',
+                      'Статусы, прогресс, оценки и заметки по нику, без '
+                      'входа',
                   control: OutlinedButton.icon(
                     onPressed: () => showShikimoriImportDialog(context),
                     icon: const Icon(LucideIcons.download),
@@ -292,9 +349,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 ChoiceRow(
                   title: 'Резервные копии',
-                  text:
-                      'Раз в день при запуске. Можно вернуть данные на '
-                      'дату копии.',
+                  text: 'Создаются раз в день при запуске',
                   control: OutlinedButton.icon(
                     onPressed: () => showBackupsDialog(context),
                     icon: const Icon(LucideIcons.archiveRestore),
@@ -305,7 +360,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   title: 'Перенос данных',
                   text:
                       'Библиотека, история и настройки одним файлом. '
-                      'Загрузка заменяет текущие данные.',
+                      'Загрузка заменяет текущие данные',
                   control: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -334,13 +389,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 if (_autostart != null)
                   SettingRow(
                     title: 'Запускать вместе с Windows',
-                    text: 'Сразу в трей, без окна.',
+                    text: 'Сразу в трее, без окна',
                     value: _autostart!,
                     onChanged: _setAutostart,
                   ),
                 SettingRow(
                   title: 'Сворачивать в трей при закрытии',
-                  text: 'Выход: правый клик по значку в трее.',
+                  text: 'Выход через значок в трее',
                   value: prefs.closeToTray,
                   onChanged: (value) =>
                       change((prefs) => prefs.copyWith(closeToTray: value)),
@@ -363,12 +418,74 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             child: SettingRow(
               title: 'Проверять обновления',
-              text: 'О новой версии сообщит синяя кнопка в боковом меню.',
+              text: 'О новой версии сообщит кнопка в боковом меню',
               value: prefs.checkUpdates,
               onChanged: _setCheckUpdates,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Поле настройки, сохраняется по Enter или при уходе из поля.
+class _PrefField extends StatefulWidget {
+  const _PrefField({
+    required this.value,
+    required this.hint,
+    required this.onSave,
+  });
+
+  final String value;
+  final String hint;
+  final ValueChanged<String> onSave;
+
+  @override
+  State<_PrefField> createState() => _PrefFieldState();
+}
+
+class _PrefFieldState extends State<_PrefField> {
+  late final _controller = TextEditingController(text: widget.value);
+  final _focus = FocusNode();
+
+  @override
+  void didUpdateWidget(_PrefField old) {
+    super.didUpdateWidget(old);
+    if (old.value != widget.value && !_focus.hasFocus) {
+      _controller.text = widget.value;
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _focus.addListener(() {
+      if (!_focus.hasFocus) _save();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final value = _controller.text.trim();
+    if (value != widget.value) widget.onSave(value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 220,
+      child: TextField(
+        controller: _controller,
+        focusNode: _focus,
+        decoration: InputDecoration(hintText: widget.hint, isDense: true),
+        onSubmitted: (_) => _save(),
       ),
     );
   }
@@ -385,7 +502,7 @@ class _NowPlayingLine extends ConsumerWidget {
     final now = ref.watch(nowPlayingProvider);
     final String text;
     if (now == null) {
-      text = 'Сейчас на YummyAnime ничего не играет.';
+      text = 'Сейчас на YummyAnime ничего не играет';
     } else {
       final percent = (now.ratio * 100).floor();
       text = [

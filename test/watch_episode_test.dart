@@ -39,6 +39,7 @@ class _Sessions extends PlayerSessionNotifier {
     int? animeId,
     int? episode,
     String? dubbing,
+    String? player,
   }) => opened.add((uri: uri, episode: episode));
 }
 

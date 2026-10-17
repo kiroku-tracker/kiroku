@@ -8,6 +8,7 @@ import 'package:webview_windows/webview_windows.dart';
 
 import '../../app_section.dart';
 import '../../core/theme/app_colors.dart';
+import '../party/party_chip.dart';
 import 'player_session.dart';
 import 'site_controls.dart';
 
@@ -150,6 +151,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
+          const PartyChip(),
           IconButton(
             tooltip: session.focus ? 'Вся страница' : 'Только плеер',
             onPressed: session.ready ? session.toggleFocus : null,

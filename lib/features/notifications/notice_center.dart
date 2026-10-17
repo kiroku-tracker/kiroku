@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/labels.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/toast.dart';
+import '../../core/widgets/popup_panel.dart';
 import '../../core/widgets/select_button.dart';
 import '../../core/widgets/setting_rows.dart';
 import '../../data/database/app_database.dart';
@@ -58,7 +59,7 @@ class NoticesButton extends ConsumerWidget {
     final anchor = box.localToGlobal(Offset.zero) & box.size;
     final sectionContext = context;
     Navigator.of(context, rootNavigator: true).push(
-      _PanelRoute(
+      PopupPanelRoute(
         anchor: anchor,
         builder: (_) => _NoticesPanel(
           openTitle: (animeId) => openTitle(
@@ -105,63 +106,6 @@ class _Badge extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Панель под кнопкой, закрывается кликом мимо и по Esc.
-class _PanelRoute extends PopupRoute<void> {
-  _PanelRoute({required this.anchor, required this.builder});
-
-  final Rect anchor;
-  final WidgetBuilder builder;
-
-  static const _width = 460.0;
-
-  @override
-  Color? get barrierColor => null;
-
-  @override
-  bool get barrierDismissible => true;
-
-  @override
-  String? get barrierLabel => 'Закрыть';
-
-  @override
-  Duration get transitionDuration => const Duration(milliseconds: 120);
-
-  @override
-  Widget buildPage(
-    BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-  ) {
-    final size = MediaQuery.sizeOf(context);
-    final left = (anchor.right - _width).clamp(8.0, size.width - _width - 8);
-    final top = anchor.bottom + 8;
-    return Stack(
-      children: [
-        Positioned(
-          left: left,
-          top: top,
-          width: _width,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: size.height - top - 16),
-            child: builder(context),
-          ),
-        ),
-      ],
-    );
-  }
-
-  @override
-  Widget buildTransitions(
-    BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-    Widget child,
-  ) => FadeTransition(
-    opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-    child: child,
-  );
 }
 
 /// Что показано в панели.
@@ -389,14 +333,14 @@ class _NoticesPanelState extends ConsumerState<_NoticesPanel> {
               children: [
                 SettingRow(
                   title: 'Новые серии',
-                  text: 'Для «Смотрю» и «Хочу посмотреть». Проверка раз в час.',
+                  text: 'Для «Смотрю» и «Хочу посмотреть»',
                   value: prefs.notifyEpisodes,
                   onChanged: (value) =>
                       change((prefs) => prefs.copyWith(notifyEpisodes: value)),
                 ),
                 ChoiceRow(
                   title: 'Когда сообщать о серии',
-                  text: 'Для тайтлов, у которых озвучка не известна.',
+                  text: 'Для тайтлов, у которых озвучка не известна',
                   enabled: prefs.notifyEpisodes,
                   sub: true,
                   control: SelectButton<EpisodeAlert>(
@@ -411,9 +355,7 @@ class _NoticesPanelState extends ConsumerState<_NoticesPanel> {
                 ),
                 SettingRow(
                   title: 'Новые сезоны',
-                  text:
-                      'Новые части франшизы, даже если в библиотеке только '
-                      'один её тайтл.',
+                  text: 'Новые части франшиз из библиотеки',
                   value: prefs.notifyFranchises,
                   onChanged: (value) => change(
                     (prefs) => prefs.copyWith(notifyFranchises: value),
@@ -421,7 +363,7 @@ class _NoticesPanelState extends ConsumerState<_NoticesPanel> {
                 ),
                 SettingRow(
                   title: 'Анонс',
-                  text: 'Новая часть появилась на Shikimori.',
+                  text: 'Новая часть появилась на Shikimori',
                   value: prefs.notifySeasonAnnounce,
                   enabled: prefs.notifyFranchises,
                   sub: true,
@@ -431,7 +373,7 @@ class _NoticesPanelState extends ConsumerState<_NoticesPanel> {
                 ),
                 SettingRow(
                   title: 'Начало показа',
-                  text: 'У анонсированной части вышла первая серия.',
+                  text: 'Вышла первая серия новой части',
                   value: prefs.notifySeasonStart,
                   enabled: prefs.notifyFranchises,
                   sub: true,
@@ -440,8 +382,8 @@ class _NoticesPanelState extends ConsumerState<_NoticesPanel> {
                   ),
                 ),
                 const SettingNote(
-                  'Тайтл или франшизу можно включить или выключить отдельно '
-                  'кнопкой с колокольчиком на их странице.',
+                  'Тайтл или франшизу можно настроить отдельно колокольчиком '
+                  'на их странице',
                 ),
               ],
             ),

@@ -63,26 +63,66 @@ const siteScript = r'''
       root.classList.toggle('kiroku-spoilers', player && spoilers && !started);
       root.classList.toggle('kiroku-mini', mini && videos.length > 0);
     }
-    function pause(on) {
+    function isMain(v) {
+      return v && v.tagName === 'VIDEO' && isFinite(v.duration) && v.duration >= 300;
+    }
+    function mainVideo(videos) {
+      return videos.filter(isMain).sort(function (a, b) {
+        return b.duration - a.duration;
+      })[0] || null;
+    }
+    function expect(v, type, value) {
+      v.__kirokuExpect = v.__kirokuExpect || {};
+      v.__kirokuExpect[type] = { at: Date.now(), value: value };
+    }
+    function expected(v, type, time) {
+      var all = v.__kirokuExpect || {};
+      var item = all[type];
+      if (!item || Date.now() - item.at > 10000) return false;
+      if (type === 'seeked' && Math.abs(time - item.value) > 3) return false;
+      delete all[type];
+      return true;
+    }
+    function control(action, position) {
       var videos = Array.prototype.slice.call(document.querySelectorAll('video'));
-      if (on) {
+      var main = mainVideo(videos);
+      if (action === 'pause') {
         videos.forEach(function (v) {
-          if (!v.paused) { v.pause(); v.__kirokuPaused = true; }
+          if (!v.paused) { expect(v, 'pause'); v.pause(); v.__kirokuPaused = true; }
         });
         return;
       }
+      if (action === 'seek') {
+        if (main && typeof position === 'number') {
+          expect(main, 'seeked', position);
+          main.currentTime = position;
+        }
+        return;
+      }
       var paused = videos.filter(function (v) { return v.__kirokuPaused; });
+      if (paused.length === 0 && main) paused = [main];
       if (paused.length === 0) {
-        paused = videos.filter(function (v) { return v.currentTime > 0; })
-          .sort(function (a, b) { return (b.duration || 0) - (a.duration || 0); })
-          .slice(0, 1);
+        var button = document.querySelector('.play_button');
+        if (button) button.click();
+        return;
       }
       paused.forEach(function (v) {
         v.__kirokuPaused = false;
+        if (v.paused) expect(v, 'play');
         var playing = v.play();
         if (playing && playing.catch) playing.catch(function () {});
       });
     }
+    ['play', 'pause', 'seeked'].forEach(function (type) {
+      document.addEventListener(type, function (e) {
+        var v = e.target;
+        if (!isMain(v)) return;
+        if (type === 'play' && !v.__kirokuStart) v.__kirokuStart = Date.now();
+        if (expected(v, type, v.currentTime)) return;
+        if (type === 'seeked' && Date.now() - (v.__kirokuStart || 0) < 8000) return;
+        send({ kiroku: 6, event: type, time: v.currentTime, url: location.href });
+      }, true);
+    });
     window.addEventListener('message', function (e) {
       var data = e.data;
       if (e.source !== window.parent || !data) return;
@@ -91,7 +131,7 @@ const siteScript = r'''
         spoilers = data.spoilers;
         refresh();
       } else if (data.kiroku === 5) {
-        if (!data.url || data.url === location.href) pause(data.pause);
+        if (!data.url || data.url === location.href) control(data.action, data.position);
       } else {
         return;
       }
@@ -103,7 +143,7 @@ const siteScript = r'''
 
   if (top) {
     window.addEventListener('message', function (e) {
-      if (e.data && e.data.kiroku === 1) send(e.data);
+      if (e.data && (e.data.kiroku === 1 || e.data.kiroku === 6)) send(e.data);
     });
     document.addEventListener('fullscreenchange', function () {
       send({ kiroku: 4, full: !!document.fullscreenElement });
@@ -208,8 +248,8 @@ const siteScript = r'''
     var hideSpoilers = true;
     window.__kirokuMini = function (on) { miniMode = on; };
     window.__kirokuSpoilers = function (on) { hideSpoilers = on; };
-    window.__kirokuPause = function (on, url) {
-      forward({ kiroku: 5, pause: on, url: url || null });
+    window.__kirokuControl = function (action, position, url) {
+      forward({ kiroku: 5, action: action, position: position, url: url || null });
     };
     setInterval(function () {
       forward({ kiroku: 3, mini: miniMode, spoilers: hideSpoilers });
@@ -312,10 +352,11 @@ const siteScript = r'''
         time: v.currentTime,
         duration: isFinite(v.duration) ? v.duration : -1,
         paused: v.paused,
-        muted: v.muted
+        muted: v.muted,
+        ready: v.readyState >= 3
       };
     });
     send({ kiroku: 1, url: location.href, title: document.title, top: top, videos: videos });
-  }, 2000);
+  }, 1000);
 })();
 ''';

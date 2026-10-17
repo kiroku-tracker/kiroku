@@ -37,8 +37,12 @@ Future<void> _prepareEnvironment() => _environment ??= () async {
   final support = await getApplicationSupportDirectory();
   await WebviewController.initializeEnvironment(
     userDataPath: '${support.path}\\webview',
+    additionalArguments: '--autoplay-policy=no-user-gesture-required',
   );
 }();
+
+/// Действие пользователя в плеере: пауза, продолжение или перемотка.
+typedef PlayerEvent = ({String type, double time});
 
 /// Встроенный просмотр сайта: страница, выбор серии и полный экран.
 class PlayerSession extends ChangeNotifier {
@@ -50,6 +54,7 @@ class PlayerSession extends ChangeNotifier {
     this.animeId,
     this.episode,
     this.dubbing,
+    this.player,
   }) {
     _marker = _ref.read(autoMarkerProvider);
     unawaited(_start());
@@ -61,8 +66,10 @@ class PlayerSession extends ChangeNotifier {
   final int? animeId;
   final int? episode;
   final String? dubbing;
+  final String? player;
 
   final controller = WebviewController();
+  final _events = StreamController<PlayerEvent>.broadcast();
   late final AutoMarker _marker;
   final _reports = <String, FrameReport>{};
   final _subscriptions = <StreamSubscription<Object?>>[];
@@ -81,6 +88,8 @@ class PlayerSession extends ChangeNotifier {
   SiteCatalog? catalog;
   SiteChoice site = (dubbing: null, player: null, episode: null);
 
+  FrameVideo? video;
+
   bool _mini = false;
   bool _ownPage = true;
   bool _chosen = false;
@@ -91,6 +100,8 @@ class PlayerSession extends ChangeNotifier {
   DateTime? _modesSentAt;
 
   bool get onPage => route != null;
+
+  Stream<PlayerEvent> get events => _events.stream;
 
   bool get native => catalog != null && _ownPage && uri.host.startsWith('ru.');
 
@@ -175,10 +186,17 @@ class PlayerSession extends ChangeNotifier {
     playing = !pause;
     _toggledAt = DateTime.now();
     _notify();
-    final url = jsonEncode(pause ? null : _videoFrame);
+    control(pause ? 'pause' : 'play');
+  }
+
+  /// Команда видео: pause, play или seek на [position] секунд.
+  void control(String action, {double? position}) {
+    if (_closed || !ready) return;
+    final url = jsonEncode(action == 'pause' ? null : _videoFrame);
     unawaited(
       controller.executeScript(
-        'window.__kirokuPause && window.__kirokuPause($pause, $url)',
+        'window.__kirokuControl && window.__kirokuControl('
+        '${jsonEncode(action)}, ${jsonEncode(position)}, $url)',
       ),
     );
   }
@@ -235,8 +253,8 @@ class PlayerSession extends ChangeNotifier {
     if (url == null || !url.path.startsWith('/catalog/item/')) return;
     _chosen = true;
     if (!url.host.startsWith('ru.')) return;
-    if (episode == null && dubbing == null) return;
-    choose((dubbing: dubbing, player: null, episode: episode));
+    if (episode == null && dubbing == null && player == null) return;
+    choose((dubbing: dubbing, player: player, episode: episode));
   }
 
   void _onMessage(Object? message) {
@@ -248,10 +266,19 @@ class PlayerSession extends ChangeNotifier {
       unawaited(_setFullScreen(message['full'] == true));
       return;
     }
+    if (message is Map && message['kiroku'] == 6) {
+      final type = message['event'];
+      _events.add((
+        type: type == 'seeked' ? 'seek' : '$type',
+        time: (message['time'] as num?)?.toDouble() ?? 0,
+      ));
+      return;
+    }
     final now = DateTime.now();
     final report = FrameReport.fromMessage(message, now);
     if (report == null) return;
     _reports[report.url] = report;
+    video = mainVideo(_reports.values, now: now)?.video;
     final embedded = embeddedSession(_reports.values, now: now);
     _marker.reportEmbedded(embedded);
     if (embedded == null) return;
@@ -343,6 +370,7 @@ class PlayerSession extends ChangeNotifier {
     }
     _coverTimer?.cancel();
     _marker.reportEmbedded(null);
+    unawaited(_events.close());
     unawaited(controller.dispose());
   }
 }
@@ -359,12 +387,13 @@ class PlayerSessionNotifier extends Notifier<PlayerSession?> {
     int? animeId,
     int? episode,
     String? dubbing,
+    String? player,
   }) {
     final current = state;
     if (current != null && current.uri == uri) {
       show();
       if (episode != null && episode != current.site.episode) {
-        current.choose((dubbing: dubbing, player: null, episode: episode));
+        current.choose((dubbing: dubbing, player: player, episode: episode));
       }
       return;
     }
@@ -377,6 +406,7 @@ class PlayerSessionNotifier extends Notifier<PlayerSession?> {
       animeId: animeId,
       episode: episode,
       dubbing: dubbing,
+      player: player,
     );
     state = session;
     _push(session);

@@ -6752,6 +6752,964 @@ class NoticesCompanion extends UpdateCompanion<Notice> {
   }
 }
 
+class $PartySessionsTable extends PartySessions
+    with TableInfo<$PartySessionsTable, PartySession> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PartySessionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _roleMeta = const VerificationMeta('role');
+  @override
+  late final GeneratedColumn<String> role = GeneratedColumn<String>(
+    'role',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _addressMeta = const VerificationMeta(
+    'address',
+  );
+  @override
+  late final GeneratedColumn<String> address = GeneratedColumn<String>(
+    'address',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _animeIdMeta = const VerificationMeta(
+    'animeId',
+  );
+  @override
+  late final GeneratedColumn<int> animeId = GeneratedColumn<int>(
+    'anime_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _uriMeta = const VerificationMeta('uri');
+  @override
+  late final GeneratedColumn<String> uri = GeneratedColumn<String>(
+    'uri',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _episodeFromMeta = const VerificationMeta(
+    'episodeFrom',
+  );
+  @override
+  late final GeneratedColumn<int> episodeFrom = GeneratedColumn<int>(
+    'episode_from',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _episodeToMeta = const VerificationMeta(
+    'episodeTo',
+  );
+  @override
+  late final GeneratedColumn<int> episodeTo = GeneratedColumn<int>(
+    'episode_to',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<double> position = GeneratedColumn<double>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _peopleMeta = const VerificationMeta('people');
+  @override
+  late final GeneratedColumn<String> people = GeneratedColumn<String>(
+    'people',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _startedAtMeta = const VerificationMeta(
+    'startedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startedAt = GeneratedColumn<DateTime>(
+    'started_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _endedAtMeta = const VerificationMeta(
+    'endedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> endedAt = GeneratedColumn<DateTime>(
+    'ended_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    role,
+    address,
+    animeId,
+    title,
+    uri,
+    episodeFrom,
+    episodeTo,
+    position,
+    people,
+    startedAt,
+    endedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'party_sessions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PartySession> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('role')) {
+      context.handle(
+        _roleMeta,
+        role.isAcceptableOrUnknown(data['role']!, _roleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_roleMeta);
+    }
+    if (data.containsKey('address')) {
+      context.handle(
+        _addressMeta,
+        address.isAcceptableOrUnknown(data['address']!, _addressMeta),
+      );
+    }
+    if (data.containsKey('anime_id')) {
+      context.handle(
+        _animeIdMeta,
+        animeId.isAcceptableOrUnknown(data['anime_id']!, _animeIdMeta),
+      );
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('uri')) {
+      context.handle(
+        _uriMeta,
+        uri.isAcceptableOrUnknown(data['uri']!, _uriMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uriMeta);
+    }
+    if (data.containsKey('episode_from')) {
+      context.handle(
+        _episodeFromMeta,
+        episodeFrom.isAcceptableOrUnknown(
+          data['episode_from']!,
+          _episodeFromMeta,
+        ),
+      );
+    }
+    if (data.containsKey('episode_to')) {
+      context.handle(
+        _episodeToMeta,
+        episodeTo.isAcceptableOrUnknown(data['episode_to']!, _episodeToMeta),
+      );
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    }
+    if (data.containsKey('people')) {
+      context.handle(
+        _peopleMeta,
+        people.isAcceptableOrUnknown(data['people']!, _peopleMeta),
+      );
+    }
+    if (data.containsKey('started_at')) {
+      context.handle(
+        _startedAtMeta,
+        startedAt.isAcceptableOrUnknown(data['started_at']!, _startedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startedAtMeta);
+    }
+    if (data.containsKey('ended_at')) {
+      context.handle(
+        _endedAtMeta,
+        endedAt.isAcceptableOrUnknown(data['ended_at']!, _endedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_endedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PartySession map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PartySession(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      role: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}role'],
+      )!,
+      address: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}address'],
+      )!,
+      animeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}anime_id'],
+      ),
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      uri: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uri'],
+      )!,
+      episodeFrom: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}episode_from'],
+      ),
+      episodeTo: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}episode_to'],
+      ),
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}position'],
+      )!,
+      people: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}people'],
+      )!,
+      startedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}started_at'],
+      )!,
+      endedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}ended_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PartySessionsTable createAlias(String alias) {
+    return $PartySessionsTable(attachedDatabase, alias);
+  }
+}
+
+class PartySession extends DataClass implements Insertable<PartySession> {
+  final String id;
+  final String role;
+  final String address;
+  final int? animeId;
+  final String title;
+  final String uri;
+  final int? episodeFrom;
+  final int? episodeTo;
+  final double position;
+  final String people;
+  final DateTime startedAt;
+  final DateTime endedAt;
+  const PartySession({
+    required this.id,
+    required this.role,
+    required this.address,
+    this.animeId,
+    required this.title,
+    required this.uri,
+    this.episodeFrom,
+    this.episodeTo,
+    required this.position,
+    required this.people,
+    required this.startedAt,
+    required this.endedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['role'] = Variable<String>(role);
+    map['address'] = Variable<String>(address);
+    if (!nullToAbsent || animeId != null) {
+      map['anime_id'] = Variable<int>(animeId);
+    }
+    map['title'] = Variable<String>(title);
+    map['uri'] = Variable<String>(uri);
+    if (!nullToAbsent || episodeFrom != null) {
+      map['episode_from'] = Variable<int>(episodeFrom);
+    }
+    if (!nullToAbsent || episodeTo != null) {
+      map['episode_to'] = Variable<int>(episodeTo);
+    }
+    map['position'] = Variable<double>(position);
+    map['people'] = Variable<String>(people);
+    map['started_at'] = Variable<DateTime>(startedAt);
+    map['ended_at'] = Variable<DateTime>(endedAt);
+    return map;
+  }
+
+  PartySessionsCompanion toCompanion(bool nullToAbsent) {
+    return PartySessionsCompanion(
+      id: Value(id),
+      role: Value(role),
+      address: Value(address),
+      animeId: animeId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(animeId),
+      title: Value(title),
+      uri: Value(uri),
+      episodeFrom: episodeFrom == null && nullToAbsent
+          ? const Value.absent()
+          : Value(episodeFrom),
+      episodeTo: episodeTo == null && nullToAbsent
+          ? const Value.absent()
+          : Value(episodeTo),
+      position: Value(position),
+      people: Value(people),
+      startedAt: Value(startedAt),
+      endedAt: Value(endedAt),
+    );
+  }
+
+  factory PartySession.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PartySession(
+      id: serializer.fromJson<String>(json['id']),
+      role: serializer.fromJson<String>(json['role']),
+      address: serializer.fromJson<String>(json['address']),
+      animeId: serializer.fromJson<int?>(json['animeId']),
+      title: serializer.fromJson<String>(json['title']),
+      uri: serializer.fromJson<String>(json['uri']),
+      episodeFrom: serializer.fromJson<int?>(json['episodeFrom']),
+      episodeTo: serializer.fromJson<int?>(json['episodeTo']),
+      position: serializer.fromJson<double>(json['position']),
+      people: serializer.fromJson<String>(json['people']),
+      startedAt: serializer.fromJson<DateTime>(json['startedAt']),
+      endedAt: serializer.fromJson<DateTime>(json['endedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'role': serializer.toJson<String>(role),
+      'address': serializer.toJson<String>(address),
+      'animeId': serializer.toJson<int?>(animeId),
+      'title': serializer.toJson<String>(title),
+      'uri': serializer.toJson<String>(uri),
+      'episodeFrom': serializer.toJson<int?>(episodeFrom),
+      'episodeTo': serializer.toJson<int?>(episodeTo),
+      'position': serializer.toJson<double>(position),
+      'people': serializer.toJson<String>(people),
+      'startedAt': serializer.toJson<DateTime>(startedAt),
+      'endedAt': serializer.toJson<DateTime>(endedAt),
+    };
+  }
+
+  PartySession copyWith({
+    String? id,
+    String? role,
+    String? address,
+    Value<int?> animeId = const Value.absent(),
+    String? title,
+    String? uri,
+    Value<int?> episodeFrom = const Value.absent(),
+    Value<int?> episodeTo = const Value.absent(),
+    double? position,
+    String? people,
+    DateTime? startedAt,
+    DateTime? endedAt,
+  }) => PartySession(
+    id: id ?? this.id,
+    role: role ?? this.role,
+    address: address ?? this.address,
+    animeId: animeId.present ? animeId.value : this.animeId,
+    title: title ?? this.title,
+    uri: uri ?? this.uri,
+    episodeFrom: episodeFrom.present ? episodeFrom.value : this.episodeFrom,
+    episodeTo: episodeTo.present ? episodeTo.value : this.episodeTo,
+    position: position ?? this.position,
+    people: people ?? this.people,
+    startedAt: startedAt ?? this.startedAt,
+    endedAt: endedAt ?? this.endedAt,
+  );
+  PartySession copyWithCompanion(PartySessionsCompanion data) {
+    return PartySession(
+      id: data.id.present ? data.id.value : this.id,
+      role: data.role.present ? data.role.value : this.role,
+      address: data.address.present ? data.address.value : this.address,
+      animeId: data.animeId.present ? data.animeId.value : this.animeId,
+      title: data.title.present ? data.title.value : this.title,
+      uri: data.uri.present ? data.uri.value : this.uri,
+      episodeFrom: data.episodeFrom.present
+          ? data.episodeFrom.value
+          : this.episodeFrom,
+      episodeTo: data.episodeTo.present ? data.episodeTo.value : this.episodeTo,
+      position: data.position.present ? data.position.value : this.position,
+      people: data.people.present ? data.people.value : this.people,
+      startedAt: data.startedAt.present ? data.startedAt.value : this.startedAt,
+      endedAt: data.endedAt.present ? data.endedAt.value : this.endedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PartySession(')
+          ..write('id: $id, ')
+          ..write('role: $role, ')
+          ..write('address: $address, ')
+          ..write('animeId: $animeId, ')
+          ..write('title: $title, ')
+          ..write('uri: $uri, ')
+          ..write('episodeFrom: $episodeFrom, ')
+          ..write('episodeTo: $episodeTo, ')
+          ..write('position: $position, ')
+          ..write('people: $people, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('endedAt: $endedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    role,
+    address,
+    animeId,
+    title,
+    uri,
+    episodeFrom,
+    episodeTo,
+    position,
+    people,
+    startedAt,
+    endedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PartySession &&
+          other.id == this.id &&
+          other.role == this.role &&
+          other.address == this.address &&
+          other.animeId == this.animeId &&
+          other.title == this.title &&
+          other.uri == this.uri &&
+          other.episodeFrom == this.episodeFrom &&
+          other.episodeTo == this.episodeTo &&
+          other.position == this.position &&
+          other.people == this.people &&
+          other.startedAt == this.startedAt &&
+          other.endedAt == this.endedAt);
+}
+
+class PartySessionsCompanion extends UpdateCompanion<PartySession> {
+  final Value<String> id;
+  final Value<String> role;
+  final Value<String> address;
+  final Value<int?> animeId;
+  final Value<String> title;
+  final Value<String> uri;
+  final Value<int?> episodeFrom;
+  final Value<int?> episodeTo;
+  final Value<double> position;
+  final Value<String> people;
+  final Value<DateTime> startedAt;
+  final Value<DateTime> endedAt;
+  final Value<int> rowid;
+  const PartySessionsCompanion({
+    this.id = const Value.absent(),
+    this.role = const Value.absent(),
+    this.address = const Value.absent(),
+    this.animeId = const Value.absent(),
+    this.title = const Value.absent(),
+    this.uri = const Value.absent(),
+    this.episodeFrom = const Value.absent(),
+    this.episodeTo = const Value.absent(),
+    this.position = const Value.absent(),
+    this.people = const Value.absent(),
+    this.startedAt = const Value.absent(),
+    this.endedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PartySessionsCompanion.insert({
+    required String id,
+    required String role,
+    this.address = const Value.absent(),
+    this.animeId = const Value.absent(),
+    required String title,
+    required String uri,
+    this.episodeFrom = const Value.absent(),
+    this.episodeTo = const Value.absent(),
+    this.position = const Value.absent(),
+    this.people = const Value.absent(),
+    required DateTime startedAt,
+    required DateTime endedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       role = Value(role),
+       title = Value(title),
+       uri = Value(uri),
+       startedAt = Value(startedAt),
+       endedAt = Value(endedAt);
+  static Insertable<PartySession> custom({
+    Expression<String>? id,
+    Expression<String>? role,
+    Expression<String>? address,
+    Expression<int>? animeId,
+    Expression<String>? title,
+    Expression<String>? uri,
+    Expression<int>? episodeFrom,
+    Expression<int>? episodeTo,
+    Expression<double>? position,
+    Expression<String>? people,
+    Expression<DateTime>? startedAt,
+    Expression<DateTime>? endedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (role != null) 'role': role,
+      if (address != null) 'address': address,
+      if (animeId != null) 'anime_id': animeId,
+      if (title != null) 'title': title,
+      if (uri != null) 'uri': uri,
+      if (episodeFrom != null) 'episode_from': episodeFrom,
+      if (episodeTo != null) 'episode_to': episodeTo,
+      if (position != null) 'position': position,
+      if (people != null) 'people': people,
+      if (startedAt != null) 'started_at': startedAt,
+      if (endedAt != null) 'ended_at': endedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PartySessionsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? role,
+    Value<String>? address,
+    Value<int?>? animeId,
+    Value<String>? title,
+    Value<String>? uri,
+    Value<int?>? episodeFrom,
+    Value<int?>? episodeTo,
+    Value<double>? position,
+    Value<String>? people,
+    Value<DateTime>? startedAt,
+    Value<DateTime>? endedAt,
+    Value<int>? rowid,
+  }) {
+    return PartySessionsCompanion(
+      id: id ?? this.id,
+      role: role ?? this.role,
+      address: address ?? this.address,
+      animeId: animeId ?? this.animeId,
+      title: title ?? this.title,
+      uri: uri ?? this.uri,
+      episodeFrom: episodeFrom ?? this.episodeFrom,
+      episodeTo: episodeTo ?? this.episodeTo,
+      position: position ?? this.position,
+      people: people ?? this.people,
+      startedAt: startedAt ?? this.startedAt,
+      endedAt: endedAt ?? this.endedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (role.present) {
+      map['role'] = Variable<String>(role.value);
+    }
+    if (address.present) {
+      map['address'] = Variable<String>(address.value);
+    }
+    if (animeId.present) {
+      map['anime_id'] = Variable<int>(animeId.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (uri.present) {
+      map['uri'] = Variable<String>(uri.value);
+    }
+    if (episodeFrom.present) {
+      map['episode_from'] = Variable<int>(episodeFrom.value);
+    }
+    if (episodeTo.present) {
+      map['episode_to'] = Variable<int>(episodeTo.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<double>(position.value);
+    }
+    if (people.present) {
+      map['people'] = Variable<String>(people.value);
+    }
+    if (startedAt.present) {
+      map['started_at'] = Variable<DateTime>(startedAt.value);
+    }
+    if (endedAt.present) {
+      map['ended_at'] = Variable<DateTime>(endedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PartySessionsCompanion(')
+          ..write('id: $id, ')
+          ..write('role: $role, ')
+          ..write('address: $address, ')
+          ..write('animeId: $animeId, ')
+          ..write('title: $title, ')
+          ..write('uri: $uri, ')
+          ..write('episodeFrom: $episodeFrom, ')
+          ..write('episodeTo: $episodeTo, ')
+          ..write('position: $position, ')
+          ..write('people: $people, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('endedAt: $endedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PartyPeopleTable extends PartyPeople
+    with TableInfo<$PartyPeopleTable, PartyPeopleData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PartyPeopleTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _uidMeta = const VerificationMeta('uid');
+  @override
+  late final GeneratedColumn<String> uid = GeneratedColumn<String>(
+    'uid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _seenAtMeta = const VerificationMeta('seenAt');
+  @override
+  late final GeneratedColumn<DateTime> seenAt = GeneratedColumn<DateTime>(
+    'seen_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [uid, name, seenAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'party_people';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PartyPeopleData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('uid')) {
+      context.handle(
+        _uidMeta,
+        uid.isAcceptableOrUnknown(data['uid']!, _uidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uidMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('seen_at')) {
+      context.handle(
+        _seenAtMeta,
+        seenAt.isAcceptableOrUnknown(data['seen_at']!, _seenAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_seenAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {uid};
+  @override
+  PartyPeopleData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PartyPeopleData(
+      uid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uid'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      seenAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}seen_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PartyPeopleTable createAlias(String alias) {
+    return $PartyPeopleTable(attachedDatabase, alias);
+  }
+}
+
+class PartyPeopleData extends DataClass implements Insertable<PartyPeopleData> {
+  final String uid;
+  final String name;
+  final DateTime seenAt;
+  const PartyPeopleData({
+    required this.uid,
+    required this.name,
+    required this.seenAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['uid'] = Variable<String>(uid);
+    map['name'] = Variable<String>(name);
+    map['seen_at'] = Variable<DateTime>(seenAt);
+    return map;
+  }
+
+  PartyPeopleCompanion toCompanion(bool nullToAbsent) {
+    return PartyPeopleCompanion(
+      uid: Value(uid),
+      name: Value(name),
+      seenAt: Value(seenAt),
+    );
+  }
+
+  factory PartyPeopleData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PartyPeopleData(
+      uid: serializer.fromJson<String>(json['uid']),
+      name: serializer.fromJson<String>(json['name']),
+      seenAt: serializer.fromJson<DateTime>(json['seenAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'uid': serializer.toJson<String>(uid),
+      'name': serializer.toJson<String>(name),
+      'seenAt': serializer.toJson<DateTime>(seenAt),
+    };
+  }
+
+  PartyPeopleData copyWith({String? uid, String? name, DateTime? seenAt}) =>
+      PartyPeopleData(
+        uid: uid ?? this.uid,
+        name: name ?? this.name,
+        seenAt: seenAt ?? this.seenAt,
+      );
+  PartyPeopleData copyWithCompanion(PartyPeopleCompanion data) {
+    return PartyPeopleData(
+      uid: data.uid.present ? data.uid.value : this.uid,
+      name: data.name.present ? data.name.value : this.name,
+      seenAt: data.seenAt.present ? data.seenAt.value : this.seenAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PartyPeopleData(')
+          ..write('uid: $uid, ')
+          ..write('name: $name, ')
+          ..write('seenAt: $seenAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(uid, name, seenAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PartyPeopleData &&
+          other.uid == this.uid &&
+          other.name == this.name &&
+          other.seenAt == this.seenAt);
+}
+
+class PartyPeopleCompanion extends UpdateCompanion<PartyPeopleData> {
+  final Value<String> uid;
+  final Value<String> name;
+  final Value<DateTime> seenAt;
+  final Value<int> rowid;
+  const PartyPeopleCompanion({
+    this.uid = const Value.absent(),
+    this.name = const Value.absent(),
+    this.seenAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PartyPeopleCompanion.insert({
+    required String uid,
+    required String name,
+    required DateTime seenAt,
+    this.rowid = const Value.absent(),
+  }) : uid = Value(uid),
+       name = Value(name),
+       seenAt = Value(seenAt);
+  static Insertable<PartyPeopleData> custom({
+    Expression<String>? uid,
+    Expression<String>? name,
+    Expression<DateTime>? seenAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (uid != null) 'uid': uid,
+      if (name != null) 'name': name,
+      if (seenAt != null) 'seen_at': seenAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PartyPeopleCompanion copyWith({
+    Value<String>? uid,
+    Value<String>? name,
+    Value<DateTime>? seenAt,
+    Value<int>? rowid,
+  }) {
+    return PartyPeopleCompanion(
+      uid: uid ?? this.uid,
+      name: name ?? this.name,
+      seenAt: seenAt ?? this.seenAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (uid.present) {
+      map['uid'] = Variable<String>(uid.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (seenAt.present) {
+      map['seen_at'] = Variable<DateTime>(seenAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PartyPeopleCompanion(')
+          ..write('uid: $uid, ')
+          ..write('name: $name, ')
+          ..write('seenAt: $seenAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -6773,6 +7731,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $WatchLinksTable watchLinks = $WatchLinksTable(this);
   late final $SiteEpisodesTable siteEpisodes = $SiteEpisodesTable(this);
   late final $NoticesTable notices = $NoticesTable(this);
+  late final $PartySessionsTable partySessions = $PartySessionsTable(this);
+  late final $PartyPeopleTable partyPeople = $PartyPeopleTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6792,6 +7752,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     watchLinks,
     siteEpisodes,
     notices,
+    partySessions,
+    partyPeople,
   ];
   @override
   DriftDatabaseOptions get options =>
@@ -11356,6 +12318,521 @@ typedef $$NoticesTableProcessedTableManager =
       Notice,
       PrefetchHooks Function()
     >;
+typedef $$PartySessionsTableCreateCompanionBuilder =
+    PartySessionsCompanion Function({
+      required String id,
+      required String role,
+      Value<String> address,
+      Value<int?> animeId,
+      required String title,
+      required String uri,
+      Value<int?> episodeFrom,
+      Value<int?> episodeTo,
+      Value<double> position,
+      Value<String> people,
+      required DateTime startedAt,
+      required DateTime endedAt,
+      Value<int> rowid,
+    });
+typedef $$PartySessionsTableUpdateCompanionBuilder =
+    PartySessionsCompanion Function({
+      Value<String> id,
+      Value<String> role,
+      Value<String> address,
+      Value<int?> animeId,
+      Value<String> title,
+      Value<String> uri,
+      Value<int?> episodeFrom,
+      Value<int?> episodeTo,
+      Value<double> position,
+      Value<String> people,
+      Value<DateTime> startedAt,
+      Value<DateTime> endedAt,
+      Value<int> rowid,
+    });
+
+class $$PartySessionsTableFilterComposer
+    extends Composer<_$AppDatabase, $PartySessionsTable> {
+  $$PartySessionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get address => $composableBuilder(
+    column: $table.address,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get animeId => $composableBuilder(
+    column: $table.animeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get uri => $composableBuilder(
+    column: $table.uri,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get episodeFrom => $composableBuilder(
+    column: $table.episodeFrom,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get episodeTo => $composableBuilder(
+    column: $table.episodeTo,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get people => $composableBuilder(
+    column: $table.people,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get endedAt => $composableBuilder(
+    column: $table.endedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PartySessionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PartySessionsTable> {
+  $$PartySessionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get address => $composableBuilder(
+    column: $table.address,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get animeId => $composableBuilder(
+    column: $table.animeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get uri => $composableBuilder(
+    column: $table.uri,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get episodeFrom => $composableBuilder(
+    column: $table.episodeFrom,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get episodeTo => $composableBuilder(
+    column: $table.episodeTo,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get people => $composableBuilder(
+    column: $table.people,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get endedAt => $composableBuilder(
+    column: $table.endedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PartySessionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PartySessionsTable> {
+  $$PartySessionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get role =>
+      $composableBuilder(column: $table.role, builder: (column) => column);
+
+  GeneratedColumn<String> get address =>
+      $composableBuilder(column: $table.address, builder: (column) => column);
+
+  GeneratedColumn<int> get animeId =>
+      $composableBuilder(column: $table.animeId, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get uri =>
+      $composableBuilder(column: $table.uri, builder: (column) => column);
+
+  GeneratedColumn<int> get episodeFrom => $composableBuilder(
+    column: $table.episodeFrom,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get episodeTo =>
+      $composableBuilder(column: $table.episodeTo, builder: (column) => column);
+
+  GeneratedColumn<double> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  GeneratedColumn<String> get people =>
+      $composableBuilder(column: $table.people, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startedAt =>
+      $composableBuilder(column: $table.startedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get endedAt =>
+      $composableBuilder(column: $table.endedAt, builder: (column) => column);
+}
+
+class $$PartySessionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PartySessionsTable,
+          PartySession,
+          $$PartySessionsTableFilterComposer,
+          $$PartySessionsTableOrderingComposer,
+          $$PartySessionsTableAnnotationComposer,
+          $$PartySessionsTableCreateCompanionBuilder,
+          $$PartySessionsTableUpdateCompanionBuilder,
+          (
+            PartySession,
+            BaseReferences<_$AppDatabase, $PartySessionsTable, PartySession>,
+          ),
+          PartySession,
+          PrefetchHooks Function()
+        > {
+  $$PartySessionsTableTableManager(_$AppDatabase db, $PartySessionsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PartySessionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PartySessionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PartySessionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> role = const Value.absent(),
+                Value<String> address = const Value.absent(),
+                Value<int?> animeId = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> uri = const Value.absent(),
+                Value<int?> episodeFrom = const Value.absent(),
+                Value<int?> episodeTo = const Value.absent(),
+                Value<double> position = const Value.absent(),
+                Value<String> people = const Value.absent(),
+                Value<DateTime> startedAt = const Value.absent(),
+                Value<DateTime> endedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PartySessionsCompanion(
+                id: id,
+                role: role,
+                address: address,
+                animeId: animeId,
+                title: title,
+                uri: uri,
+                episodeFrom: episodeFrom,
+                episodeTo: episodeTo,
+                position: position,
+                people: people,
+                startedAt: startedAt,
+                endedAt: endedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String role,
+                Value<String> address = const Value.absent(),
+                Value<int?> animeId = const Value.absent(),
+                required String title,
+                required String uri,
+                Value<int?> episodeFrom = const Value.absent(),
+                Value<int?> episodeTo = const Value.absent(),
+                Value<double> position = const Value.absent(),
+                Value<String> people = const Value.absent(),
+                required DateTime startedAt,
+                required DateTime endedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => PartySessionsCompanion.insert(
+                id: id,
+                role: role,
+                address: address,
+                animeId: animeId,
+                title: title,
+                uri: uri,
+                episodeFrom: episodeFrom,
+                episodeTo: episodeTo,
+                position: position,
+                people: people,
+                startedAt: startedAt,
+                endedAt: endedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$PartySessionsTable, PartySession>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $PartySessionsTable,
+                    PartySession
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PartySessionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PartySessionsTable,
+      PartySession,
+      $$PartySessionsTableFilterComposer,
+      $$PartySessionsTableOrderingComposer,
+      $$PartySessionsTableAnnotationComposer,
+      $$PartySessionsTableCreateCompanionBuilder,
+      $$PartySessionsTableUpdateCompanionBuilder,
+      (
+        PartySession,
+        BaseReferences<_$AppDatabase, $PartySessionsTable, PartySession>,
+      ),
+      PartySession,
+      PrefetchHooks Function()
+    >;
+typedef $$PartyPeopleTableCreateCompanionBuilder =
+    PartyPeopleCompanion Function({
+      required String uid,
+      required String name,
+      required DateTime seenAt,
+      Value<int> rowid,
+    });
+typedef $$PartyPeopleTableUpdateCompanionBuilder =
+    PartyPeopleCompanion Function({
+      Value<String> uid,
+      Value<String> name,
+      Value<DateTime> seenAt,
+      Value<int> rowid,
+    });
+
+class $$PartyPeopleTableFilterComposer
+    extends Composer<_$AppDatabase, $PartyPeopleTable> {
+  $$PartyPeopleTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get uid => $composableBuilder(
+    column: $table.uid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get seenAt => $composableBuilder(
+    column: $table.seenAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PartyPeopleTableOrderingComposer
+    extends Composer<_$AppDatabase, $PartyPeopleTable> {
+  $$PartyPeopleTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get uid => $composableBuilder(
+    column: $table.uid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get seenAt => $composableBuilder(
+    column: $table.seenAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PartyPeopleTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PartyPeopleTable> {
+  $$PartyPeopleTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get uid =>
+      $composableBuilder(column: $table.uid, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get seenAt =>
+      $composableBuilder(column: $table.seenAt, builder: (column) => column);
+}
+
+class $$PartyPeopleTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PartyPeopleTable,
+          PartyPeopleData,
+          $$PartyPeopleTableFilterComposer,
+          $$PartyPeopleTableOrderingComposer,
+          $$PartyPeopleTableAnnotationComposer,
+          $$PartyPeopleTableCreateCompanionBuilder,
+          $$PartyPeopleTableUpdateCompanionBuilder,
+          (
+            PartyPeopleData,
+            BaseReferences<_$AppDatabase, $PartyPeopleTable, PartyPeopleData>,
+          ),
+          PartyPeopleData,
+          PrefetchHooks Function()
+        > {
+  $$PartyPeopleTableTableManager(_$AppDatabase db, $PartyPeopleTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PartyPeopleTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PartyPeopleTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PartyPeopleTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> uid = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<DateTime> seenAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PartyPeopleCompanion(
+                uid: uid,
+                name: name,
+                seenAt: seenAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String uid,
+                required String name,
+                required DateTime seenAt,
+                Value<int> rowid = const Value.absent(),
+              }) => PartyPeopleCompanion.insert(
+                uid: uid,
+                name: name,
+                seenAt: seenAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$PartyPeopleTable, PartyPeopleData>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $PartyPeopleTable,
+                    PartyPeopleData
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PartyPeopleTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PartyPeopleTable,
+      PartyPeopleData,
+      $$PartyPeopleTableFilterComposer,
+      $$PartyPeopleTableOrderingComposer,
+      $$PartyPeopleTableAnnotationComposer,
+      $$PartyPeopleTableCreateCompanionBuilder,
+      $$PartyPeopleTableUpdateCompanionBuilder,
+      (
+        PartyPeopleData,
+        BaseReferences<_$AppDatabase, $PartyPeopleTable, PartyPeopleData>,
+      ),
+      PartyPeopleData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -11388,4 +12865,8 @@ class $AppDatabaseManager {
       $$SiteEpisodesTableTableManager(_db, _db.siteEpisodes);
   $$NoticesTableTableManager get notices =>
       $$NoticesTableTableManager(_db, _db.notices);
+  $$PartySessionsTableTableManager get partySessions =>
+      $$PartySessionsTableTableManager(_db, _db.partySessions);
+  $$PartyPeopleTableTableManager get partyPeople =>
+      $$PartyPeopleTableTableManager(_db, _db.partyPeople);
 }

@@ -14,6 +14,8 @@ import 'features/calendar/calendar_screen.dart';
 import 'features/groups/groups_screen.dart';
 import 'features/journal/journal_screen.dart';
 import 'features/library/library_screen.dart';
+import 'features/party/party_controller.dart';
+import 'features/party/party_screen.dart';
 import 'features/player/player_pip.dart';
 import 'features/player/player_session.dart';
 import 'features/search/search_screen.dart';
@@ -69,6 +71,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   static const _sectionRoots = {
     AppSection.library: LibraryScreen(),
     AppSection.groups: GroupsScreen(),
+    AppSection.party: PartyScreen(),
     AppSection.calendar: CalendarScreen(),
     AppSection.journal: JournalScreen(),
     AppSection.search: SearchScreen(),
@@ -192,6 +195,7 @@ class _Sidebar extends ConsumerWidget {
   static const _top = [
     (AppSection.library, LucideIcons.library, 'Библиотека'),
     (AppSection.groups, LucideIcons.folders, 'Группы'),
+    (AppSection.party, LucideIcons.users, 'Совместный просмотр'),
     (AppSection.calendar, LucideIcons.calendarDays, 'Календарь'),
     (AppSection.journal, LucideIcons.history, 'Журнал отметок'),
     (AppSection.search, LucideIcons.search, 'Поиск'),
@@ -202,6 +206,13 @@ class _Sidebar extends ConsumerWidget {
     final current = ref.watch(appSectionProvider);
     void open(AppSection section) =>
         ref.read(appSectionProvider.notifier).open(section);
+    final party = ref.watch(partyProvider);
+    final session = ref.watch(playerSessionProvider);
+    final partyTarget = party.target;
+    final partyWaits =
+        party.role == PartyRole.guest &&
+        partyTarget != null &&
+        '${session?.uri}' != partyTarget.uri;
 
     return Container(
       width: 60,
@@ -214,6 +225,7 @@ class _Sidebar extends ConsumerWidget {
               icon: icon,
               label: label,
               active: section == current,
+              dot: section == AppSection.party && partyWaits,
               onTap: () => open(section),
             ),
           const Spacer(),
@@ -283,12 +295,16 @@ class _SidebarItem extends StatefulWidget {
     required this.label,
     required this.active,
     required this.onTap,
+    this.dot = false,
   });
 
   final IconData icon;
   final String label;
   final bool active;
   final VoidCallback onTap;
+
+  /// Точка на иконке: в разделе есть что-то новое.
+  final bool dot;
 
   @override
   State<_SidebarItem> createState() => _SidebarItemState();
@@ -320,10 +336,29 @@ class _SidebarItemState extends State<_SidebarItem> {
               highlightColor: Colors.transparent,
               child: SizedBox.square(
                 dimension: 42,
-                child: Icon(
-                  widget.icon,
-                  size: 20,
-                  color: highlighted ? Colors.white : AppColors.navIdle,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Icon(
+                      widget.icon,
+                      size: 20,
+                      color: highlighted ? Colors.white : AppColors.navIdle,
+                    ),
+                    if (widget.dot)
+                      const Positioned(
+                        top: 9,
+                        right: 8,
+                        child: SizedBox.square(
+                          dimension: 8,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: AppColors.accentText,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),
