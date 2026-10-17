@@ -114,6 +114,7 @@ class AppPrefs {
     this.yummyHost,
     this.episodeAlert = EpisodeAlert.air,
     this.showContinue = true,
+    this.posterOriginals = false,
     this.autoAdd = true,
     this.checkUpdates = true,
     this.discord = false,
@@ -143,6 +144,7 @@ class AppPrefs {
       orElse: () => EpisodeAlert.air,
     ),
     showContinue: settings['library.continue'] != 'false',
+    posterOriginals: settings['library.posterOriginals'] == 'true',
     autoAdd: settings['autoMark.add'] != 'false',
     checkUpdates: settings['updates.check'] != 'false',
     discord: settings['discord.enabled'] == 'true',
@@ -183,6 +185,9 @@ class AppPrefs {
 
   final bool showContinue;
 
+  /// Постеры в полном размере везде, а не только на странице тайтла.
+  final bool posterOriginals;
+
   final bool autoAdd;
 
   final bool checkUpdates;
@@ -218,6 +223,7 @@ class AppPrefs {
     if (yummyHost != null) 'yummy.host': yummyHost!.name,
     'notify.when': episodeAlert.name,
     'library.continue': '$showContinue',
+    'library.posterOriginals': '$posterOriginals',
     'autoMark.add': '$autoAdd',
     'updates.check': '$checkUpdates',
     'discord.enabled': '$discord',
@@ -242,6 +248,7 @@ class AppPrefs {
     YummyHost? yummyHost,
     EpisodeAlert? episodeAlert,
     bool? showContinue,
+    bool? posterOriginals,
     bool? autoAdd,
     bool? checkUpdates,
     bool? discord,
@@ -264,6 +271,7 @@ class AppPrefs {
     yummyHost: yummyHost ?? this.yummyHost,
     episodeAlert: episodeAlert ?? this.episodeAlert,
     showContinue: showContinue ?? this.showContinue,
+    posterOriginals: posterOriginals ?? this.posterOriginals,
     autoAdd: autoAdd ?? this.autoAdd,
     checkUpdates: checkUpdates ?? this.checkUpdates,
     discord: discord ?? this.discord,

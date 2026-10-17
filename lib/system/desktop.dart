@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../app_section.dart';
+import '../core/poster_cache.dart';
 import '../data/database/app_database.dart';
 import '../data/database/library_repository.dart';
 import '../data/database/settings_repository.dart';
@@ -64,6 +65,8 @@ class DesktopController with TrayListener, WindowListener {
     _ref.read(updatesProvider.notifier).start();
     _ref.read(discordPresenceProvider).start();
     unawaited(_backupIfDue());
+    unawaited(_upgradePosters());
+    unawaited(PosterCache.trim());
     _backupTimer = Timer.periodic(
       const Duration(hours: 1),
       (_) => _backupIfDue(),
@@ -74,6 +77,22 @@ class DesktopController with TrayListener, WindowListener {
       final prefs = next.value;
       if (prefs != null) marker.apply(prefs);
     });
+  }
+
+  /// Заменяет маленькие постеры прежних версий на крупные; при ошибке
+  /// попытка будет при следующем запуске.
+  Future<void> _upgradePosters() async {
+    try {
+      final library = _ref.read(libraryRepositoryProvider);
+      final ids = await library.smallPosterIds();
+      if (ids.isEmpty) return;
+      final shikimori = _ref.read(shikimoriClientProvider);
+      for (final info in await shikimori.getAnimes(ids)) {
+        await library.saveAnime(info);
+      }
+    } on Object {
+      // Ошибка пропускается.
+    }
   }
 
   void dispose() {

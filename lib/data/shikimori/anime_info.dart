@@ -1,6 +1,10 @@
 import 'release_facts.dart';
 
 /// Тайтл из Shikimori.
+/// Оригиналы постеров по адресу обычного постера, для тайтлов, которых нет
+/// в базе (например, в поиске).
+final knownPosterOriginals = <String, String>{};
+
 class AnimeInfo {
   const AnimeInfo({
     required this.id,
@@ -14,6 +18,7 @@ class AnimeInfo {
     this.nextEpisodeAt,
     this.airedOn,
     this.posterUrl,
+    this.posterOriginalUrl,
     this.popularity = 0,
     this.details,
     this.franchise,
@@ -21,6 +26,13 @@ class AnimeInfo {
   });
 
   factory AnimeInfo.fromGraphql(Map<String, dynamic> json) {
+    final poster = json['poster'] as Map?;
+    final posterUrl =
+        poster?['main2xUrl'] as String? ?? poster?['mainUrl'] as String?;
+    final posterOriginalUrl = poster?['originalUrl'] as String?;
+    if (posterUrl != null && posterOriginalUrl != null) {
+      knownPosterOriginals[posterUrl] = posterOriginalUrl;
+    }
     final stats = (json['statusesStats'] as List?) ?? const [];
     final hasDetails = json.containsKey('description');
     return AnimeInfo(
@@ -36,7 +48,8 @@ class AnimeInfo {
         (json['nextEpisodeAt'] as String?) ?? '',
       ),
       airedOn: _incompleteDate(json['airedOn']),
-      posterUrl: (json['poster'] as Map?)?['mainUrl'] as String?,
+      posterUrl: posterUrl,
+      posterOriginalUrl: posterOriginalUrl,
       popularity: stats.fold<int>(
         0,
         (total, entry) =>
@@ -89,7 +102,12 @@ class AnimeInfo {
   final DateTime? nextEpisodeAt;
 
   final String? airedOn;
+
+  /// Постер для карточек и списков, 450 точек в ширину.
   final String? posterUrl;
+
+  /// Постер в полном размере для страницы тайтла.
+  final String? posterOriginalUrl;
 
   final int popularity;
 

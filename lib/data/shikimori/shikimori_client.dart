@@ -39,7 +39,7 @@ class ShikimoriClient {
     id name russian kind score episodes episodesAired status nextEpisodeAt
     franchise
     airedOn { year month day }
-    poster { mainUrl }
+    poster { mainUrl main2xUrl originalUrl }
     statusesStats { status count }
   ''';
 

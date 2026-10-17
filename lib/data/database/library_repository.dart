@@ -236,6 +236,14 @@ class LibraryRepository {
     ];
   }
 
+  /// Тайтлы с маленьким постером, сохранённым прежними версиями.
+  Future<List<int>> smallPosterIds() async => [
+    for (final anime in await (_db.select(
+      _db.animes,
+    )..where((anime) => anime.posterUrl.like('%/main-%'))).get())
+      anime.id,
+  ];
+
   Future<Map<int, Anime>> animesByIds(Iterable<int> ids) async => {
     for (final anime in await (_db.select(
       _db.animes,
@@ -888,6 +896,7 @@ class LibraryRepository {
             nextEpisodeAt: Value(anime.nextEpisodeAt),
             airedOn: Value(anime.airedOn),
             posterUrl: Value(anime.posterUrl),
+            posterOriginalUrl: Value(anime.posterOriginalUrl),
             franchise: anime.franchise == null
                 ? const Value.absent()
                 : Value(anime.franchise),

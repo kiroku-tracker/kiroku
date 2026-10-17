@@ -142,7 +142,9 @@ class _FranchiseScreenState extends ConsumerState<FranchiseScreen> {
                     border: Border.all(color: const Color(0xFF33313A)),
                   ),
                   child: Poster(
-                    url: cover?.anime.posterUrl,
+                    url:
+                        cover?.anime.posterOriginalUrl ??
+                        cover?.anime.posterUrl,
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),

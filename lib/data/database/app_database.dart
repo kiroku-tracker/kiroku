@@ -22,6 +22,7 @@ class Animes extends Table {
 
   TextColumn get airedOn => text().nullable()();
   TextColumn get posterUrl => text().nullable()();
+  TextColumn get posterOriginalUrl => text().nullable()();
   DateTimeColumn get updatedAt => dateTime()();
 
   TextColumn get description => text().nullable()();
@@ -285,7 +286,7 @@ class AppDatabase extends _$AppDatabase {
   @override
   int get schemaVersion => currentSchema;
 
-  static const currentSchema = 11;
+  static const currentSchema = 12;
 
   static const fileName = 'kiroku';
 
@@ -348,6 +349,9 @@ class AppDatabase extends _$AppDatabase {
       if (from < 11) {
         await migrator.createTable(partyPeople);
       }
+      if (from < 12) {
+        await _addColumn(migrator, animes, animes.posterOriginalUrl);
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -408,6 +412,7 @@ extension AnimeRowX on Anime {
     nextEpisodeAt: nextEpisodeAt,
     airedOn: airedOn,
     posterUrl: posterUrl,
+    posterOriginalUrl: posterOriginalUrl,
     franchise: franchise,
   );
 }

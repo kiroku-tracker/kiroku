@@ -280,7 +280,7 @@ class _Hero extends ConsumerWidget {
               border: Border.all(color: const Color(0xFF33313A)),
             ),
             child: Poster(
-              url: anime.posterUrl,
+              url: anime.posterOriginalUrl ?? anime.posterUrl,
               borderRadius: BorderRadius.circular(16),
             ),
           ),

@@ -128,6 +128,18 @@ class $AnimesTable extends Animes with TableInfo<$AnimesTable, Anime> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _posterOriginalUrlMeta = const VerificationMeta(
+    'posterOriginalUrl',
+  );
+  @override
+  late final GeneratedColumn<String> posterOriginalUrl =
+      GeneratedColumn<String>(
+        'poster_original_url',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _updatedAtMeta = const VerificationMeta(
     'updatedAt',
   );
@@ -228,6 +240,7 @@ class $AnimesTable extends Animes with TableInfo<$AnimesTable, Anime> {
     nextEpisodeAt,
     airedOn,
     posterUrl,
+    posterOriginalUrl,
     updatedAt,
     description,
     genres,
@@ -322,6 +335,15 @@ class $AnimesTable extends Animes with TableInfo<$AnimesTable, Anime> {
       context.handle(
         _posterUrlMeta,
         posterUrl.isAcceptableOrUnknown(data['poster_url']!, _posterUrlMeta),
+      );
+    }
+    if (data.containsKey('poster_original_url')) {
+      context.handle(
+        _posterOriginalUrlMeta,
+        posterOriginalUrl.isAcceptableOrUnknown(
+          data['poster_original_url']!,
+          _posterOriginalUrlMeta,
+        ),
       );
     }
     if (data.containsKey('updated_at')) {
@@ -436,6 +458,10 @@ class $AnimesTable extends Animes with TableInfo<$AnimesTable, Anime> {
         DriftSqlType.string,
         data['${effectivePrefix}poster_url'],
       ),
+      posterOriginalUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}poster_original_url'],
+      ),
       updatedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
@@ -489,6 +515,7 @@ class Anime extends DataClass implements Insertable<Anime> {
   final DateTime? nextEpisodeAt;
   final String? airedOn;
   final String? posterUrl;
+  final String? posterOriginalUrl;
   final DateTime updatedAt;
   final String? description;
   final String? genres;
@@ -509,6 +536,7 @@ class Anime extends DataClass implements Insertable<Anime> {
     this.nextEpisodeAt,
     this.airedOn,
     this.posterUrl,
+    this.posterOriginalUrl,
     required this.updatedAt,
     this.description,
     this.genres,
@@ -543,6 +571,9 @@ class Anime extends DataClass implements Insertable<Anime> {
     }
     if (!nullToAbsent || posterUrl != null) {
       map['poster_url'] = Variable<String>(posterUrl);
+    }
+    if (!nullToAbsent || posterOriginalUrl != null) {
+      map['poster_original_url'] = Variable<String>(posterOriginalUrl);
     }
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || description != null) {
@@ -592,6 +623,9 @@ class Anime extends DataClass implements Insertable<Anime> {
       posterUrl: posterUrl == null && nullToAbsent
           ? const Value.absent()
           : Value(posterUrl),
+      posterOriginalUrl: posterOriginalUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(posterOriginalUrl),
       updatedAt: Value(updatedAt),
       description: description == null && nullToAbsent
           ? const Value.absent()
@@ -634,6 +668,9 @@ class Anime extends DataClass implements Insertable<Anime> {
       nextEpisodeAt: serializer.fromJson<DateTime?>(json['nextEpisodeAt']),
       airedOn: serializer.fromJson<String?>(json['airedOn']),
       posterUrl: serializer.fromJson<String?>(json['posterUrl']),
+      posterOriginalUrl: serializer.fromJson<String?>(
+        json['posterOriginalUrl'],
+      ),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       description: serializer.fromJson<String?>(json['description']),
       genres: serializer.fromJson<String?>(json['genres']),
@@ -659,6 +696,7 @@ class Anime extends DataClass implements Insertable<Anime> {
       'nextEpisodeAt': serializer.toJson<DateTime?>(nextEpisodeAt),
       'airedOn': serializer.toJson<String?>(airedOn),
       'posterUrl': serializer.toJson<String?>(posterUrl),
+      'posterOriginalUrl': serializer.toJson<String?>(posterOriginalUrl),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'description': serializer.toJson<String?>(description),
       'genres': serializer.toJson<String?>(genres),
@@ -682,6 +720,7 @@ class Anime extends DataClass implements Insertable<Anime> {
     Value<DateTime?> nextEpisodeAt = const Value.absent(),
     Value<String?> airedOn = const Value.absent(),
     Value<String?> posterUrl = const Value.absent(),
+    Value<String?> posterOriginalUrl = const Value.absent(),
     DateTime? updatedAt,
     Value<String?> description = const Value.absent(),
     Value<String?> genres = const Value.absent(),
@@ -708,6 +747,9 @@ class Anime extends DataClass implements Insertable<Anime> {
         : this.nextEpisodeAt,
     airedOn: airedOn.present ? airedOn.value : this.airedOn,
     posterUrl: posterUrl.present ? posterUrl.value : this.posterUrl,
+    posterOriginalUrl: posterOriginalUrl.present
+        ? posterOriginalUrl.value
+        : this.posterOriginalUrl,
     updatedAt: updatedAt ?? this.updatedAt,
     description: description.present ? description.value : this.description,
     genres: genres.present ? genres.value : this.genres,
@@ -742,6 +784,9 @@ class Anime extends DataClass implements Insertable<Anime> {
           : this.nextEpisodeAt,
       airedOn: data.airedOn.present ? data.airedOn.value : this.airedOn,
       posterUrl: data.posterUrl.present ? data.posterUrl.value : this.posterUrl,
+      posterOriginalUrl: data.posterOriginalUrl.present
+          ? data.posterOriginalUrl.value
+          : this.posterOriginalUrl,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       description: data.description.present
           ? data.description.value
@@ -773,6 +818,7 @@ class Anime extends DataClass implements Insertable<Anime> {
           ..write('nextEpisodeAt: $nextEpisodeAt, ')
           ..write('airedOn: $airedOn, ')
           ..write('posterUrl: $posterUrl, ')
+          ..write('posterOriginalUrl: $posterOriginalUrl, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('description: $description, ')
           ..write('genres: $genres, ')
@@ -798,6 +844,7 @@ class Anime extends DataClass implements Insertable<Anime> {
     nextEpisodeAt,
     airedOn,
     posterUrl,
+    posterOriginalUrl,
     updatedAt,
     description,
     genres,
@@ -822,6 +869,7 @@ class Anime extends DataClass implements Insertable<Anime> {
           other.nextEpisodeAt == this.nextEpisodeAt &&
           other.airedOn == this.airedOn &&
           other.posterUrl == this.posterUrl &&
+          other.posterOriginalUrl == this.posterOriginalUrl &&
           other.updatedAt == this.updatedAt &&
           other.description == this.description &&
           other.genres == this.genres &&
@@ -844,6 +892,7 @@ class AnimesCompanion extends UpdateCompanion<Anime> {
   final Value<DateTime?> nextEpisodeAt;
   final Value<String?> airedOn;
   final Value<String?> posterUrl;
+  final Value<String?> posterOriginalUrl;
   final Value<DateTime> updatedAt;
   final Value<String?> description;
   final Value<String?> genres;
@@ -864,6 +913,7 @@ class AnimesCompanion extends UpdateCompanion<Anime> {
     this.nextEpisodeAt = const Value.absent(),
     this.airedOn = const Value.absent(),
     this.posterUrl = const Value.absent(),
+    this.posterOriginalUrl = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.description = const Value.absent(),
     this.genres = const Value.absent(),
@@ -885,6 +935,7 @@ class AnimesCompanion extends UpdateCompanion<Anime> {
     this.nextEpisodeAt = const Value.absent(),
     this.airedOn = const Value.absent(),
     this.posterUrl = const Value.absent(),
+    this.posterOriginalUrl = const Value.absent(),
     required DateTime updatedAt,
     this.description = const Value.absent(),
     this.genres = const Value.absent(),
@@ -906,6 +957,7 @@ class AnimesCompanion extends UpdateCompanion<Anime> {
     Expression<DateTime>? nextEpisodeAt,
     Expression<String>? airedOn,
     Expression<String>? posterUrl,
+    Expression<String>? posterOriginalUrl,
     Expression<DateTime>? updatedAt,
     Expression<String>? description,
     Expression<String>? genres,
@@ -927,6 +979,7 @@ class AnimesCompanion extends UpdateCompanion<Anime> {
       if (nextEpisodeAt != null) 'next_episode_at': nextEpisodeAt,
       if (airedOn != null) 'aired_on': airedOn,
       if (posterUrl != null) 'poster_url': posterUrl,
+      if (posterOriginalUrl != null) 'poster_original_url': posterOriginalUrl,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (description != null) 'description': description,
       if (genres != null) 'genres': genres,
@@ -950,6 +1003,7 @@ class AnimesCompanion extends UpdateCompanion<Anime> {
     Value<DateTime?>? nextEpisodeAt,
     Value<String?>? airedOn,
     Value<String?>? posterUrl,
+    Value<String?>? posterOriginalUrl,
     Value<DateTime>? updatedAt,
     Value<String?>? description,
     Value<String?>? genres,
@@ -971,6 +1025,7 @@ class AnimesCompanion extends UpdateCompanion<Anime> {
       nextEpisodeAt: nextEpisodeAt ?? this.nextEpisodeAt,
       airedOn: airedOn ?? this.airedOn,
       posterUrl: posterUrl ?? this.posterUrl,
+      posterOriginalUrl: posterOriginalUrl ?? this.posterOriginalUrl,
       updatedAt: updatedAt ?? this.updatedAt,
       description: description ?? this.description,
       genres: genres ?? this.genres,
@@ -1018,6 +1073,9 @@ class AnimesCompanion extends UpdateCompanion<Anime> {
     if (posterUrl.present) {
       map['poster_url'] = Variable<String>(posterUrl.value);
     }
+    if (posterOriginalUrl.present) {
+      map['poster_original_url'] = Variable<String>(posterOriginalUrl.value);
+    }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
@@ -1059,6 +1117,7 @@ class AnimesCompanion extends UpdateCompanion<Anime> {
           ..write('nextEpisodeAt: $nextEpisodeAt, ')
           ..write('airedOn: $airedOn, ')
           ..write('posterUrl: $posterUrl, ')
+          ..write('posterOriginalUrl: $posterOriginalUrl, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('description: $description, ')
           ..write('genres: $genres, ')
@@ -7772,6 +7831,7 @@ typedef $$AnimesTableCreateCompanionBuilder = AnimesCompanion Function({
   Value<DateTime?> nextEpisodeAt,
   Value<String?> airedOn,
   Value<String?> posterUrl,
+  Value<String?> posterOriginalUrl,
   required DateTime updatedAt,
   Value<String?> description,
   Value<String?> genres,
@@ -7793,6 +7853,7 @@ typedef $$AnimesTableUpdateCompanionBuilder = AnimesCompanion Function({
   Value<DateTime?> nextEpisodeAt,
   Value<String?> airedOn,
   Value<String?> posterUrl,
+  Value<String?> posterOriginalUrl,
   Value<DateTime> updatedAt,
   Value<String?> description,
   Value<String?> genres,
@@ -7887,6 +7948,11 @@ class $$AnimesTableFilterComposer
 
   ColumnFilters<String> get posterUrl => $composableBuilder(
     column: $table.posterUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get posterOriginalUrl => $composableBuilder(
+    column: $table.posterOriginalUrl,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8020,6 +8086,11 @@ class $$AnimesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get posterOriginalUrl => $composableBuilder(
+    column: $table.posterOriginalUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
@@ -8110,6 +8181,11 @@ class $$AnimesTableAnnotationComposer
 
   GeneratedColumn<String> get posterUrl =>
       $composableBuilder(column: $table.posterUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get posterOriginalUrl => $composableBuilder(
+    column: $table.posterOriginalUrl,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
@@ -8206,6 +8282,7 @@ class $$AnimesTableTableManager
                 Value<DateTime?> nextEpisodeAt = const Value.absent(),
                 Value<String?> airedOn = const Value.absent(),
                 Value<String?> posterUrl = const Value.absent(),
+                Value<String?> posterOriginalUrl = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<String?> description = const Value.absent(),
                 Value<String?> genres = const Value.absent(),
@@ -8226,6 +8303,7 @@ class $$AnimesTableTableManager
                 nextEpisodeAt: nextEpisodeAt,
                 airedOn: airedOn,
                 posterUrl: posterUrl,
+                posterOriginalUrl: posterOriginalUrl,
                 updatedAt: updatedAt,
                 description: description,
                 genres: genres,
@@ -8248,6 +8326,7 @@ class $$AnimesTableTableManager
                 Value<DateTime?> nextEpisodeAt = const Value.absent(),
                 Value<String?> airedOn = const Value.absent(),
                 Value<String?> posterUrl = const Value.absent(),
+                Value<String?> posterOriginalUrl = const Value.absent(),
                 required DateTime updatedAt,
                 Value<String?> description = const Value.absent(),
                 Value<String?> genres = const Value.absent(),
@@ -8268,6 +8347,7 @@ class $$AnimesTableTableManager
                 nextEpisodeAt: nextEpisodeAt,
                 airedOn: airedOn,
                 posterUrl: posterUrl,
+                posterOriginalUrl: posterOriginalUrl,
                 updatedAt: updatedAt,
                 description: description,
                 genres: genres,

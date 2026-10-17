@@ -173,12 +173,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SizedBox(height: 18),
           Panel(
             title: 'Библиотека',
-            child: SettingRow(
-              title: 'Продолжить просмотр',
-              text: 'Тайтлы с новыми сериями над вкладками',
-              value: prefs.showContinue,
-              onChanged: (value) =>
-                  change((prefs) => prefs.copyWith(showContinue: value)),
+            child: Column(
+              children: [
+                SettingRow(
+                  title: 'Продолжить просмотр',
+                  text: 'Тайтлы с новыми сериями над вкладками',
+                  value: prefs.showContinue,
+                  onChanged: (value) =>
+                      change((prefs) => prefs.copyWith(showContinue: value)),
+                ),
+                SettingRow(
+                  title: 'Постеры в полном размере',
+                  text: 'Чётче, но первая загрузка дольше',
+                  value: prefs.posterOriginals,
+                  onChanged: (value) =>
+                      change((prefs) => prefs.copyWith(posterOriginals: value)),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 18),
@@ -284,9 +295,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     value: prefs.partyGuestRights.contains(right),
                     onChanged: (value) => change(
                       (prefs) => prefs.copyWith(
-                        partyGuestRights: value
-                            ? {...prefs.partyGuestRights, right}
-                            : {...prefs.partyGuestRights}..remove(right),
+                        partyGuestRights: {
+                          for (final other in prefs.partyGuestRights)
+                            if (other != right) other,
+                          if (value) right,
+                        },
                       ),
                     ),
                   ),

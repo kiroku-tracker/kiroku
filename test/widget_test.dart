@@ -12,6 +12,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'package:kiroku/app.dart';
 import 'package:kiroku/core/toast.dart';
+import 'package:kiroku/core/widgets/setting_rows.dart';
 import 'package:kiroku/core/widgets/status_menu.dart';
 import 'package:kiroku/features/library/library_toolbar.dart';
 import 'package:kiroku/data/database/app_database.dart';
@@ -261,6 +262,32 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Готово'), findsNothing);
     expect(undone, isFalse);
+  });
+
+  testWidgets('права гостей в настройках включаются и выключаются', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await tester.tap(find.byTooltip('Настройки').first);
+    await settle(tester);
+    final toggle = find.descendant(
+      of: find.ancestor(
+        of: find.text('Выбор серии у гостей'),
+        matching: find.byType(SettingRow),
+      ),
+      matching: find.byType(Switch),
+    );
+    await tester.ensureVisible(toggle);
+    await settle(tester);
+    expect(tester.widget<Switch>(toggle).value, isFalse);
+    await tester.tap(toggle);
+    await settle(tester);
+    expect(tester.widget<Switch>(toggle).value, isTrue);
+    await tester.tap(toggle);
+    await settle(tester);
+    expect(tester.widget<Switch>(toggle).value, isFalse);
+
+    await unmount(tester);
   });
 }
 

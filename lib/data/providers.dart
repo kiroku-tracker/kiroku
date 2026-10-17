@@ -203,6 +203,20 @@ class AppPrefsNotifier extends AsyncNotifier<AppPrefs> {
   }
 }
 
+/// Оригиналы постеров по адресу обычного постера.
+final posterOriginalsProvider = StreamProvider<Map<String, String>>((ref) {
+  final db = ref.watch(databaseProvider);
+  final query = db.selectOnly(db.animes)
+    ..addColumns([db.animes.posterUrl, db.animes.posterOriginalUrl])
+    ..where(db.animes.posterOriginalUrl.isNotNull());
+  return query.watch().map(
+    (rows) => {
+      for (final row in rows)
+        ?row.read(db.animes.posterUrl): row.read(db.animes.posterOriginalUrl)!,
+    },
+  );
+});
+
 final appPrefsProvider = AsyncNotifierProvider<AppPrefsNotifier, AppPrefs>(
   AppPrefsNotifier.new,
 );
