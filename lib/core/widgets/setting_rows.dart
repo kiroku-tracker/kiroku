@@ -20,20 +20,42 @@ class SettingNote extends StatelessWidget {
   }
 }
 
+/// Заголовок группы строк внутри панели.
+class SettingSection extends StatelessWidget {
+  const SettingSection(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 14, 8, 0),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: AppColors.muted,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
 /// Строка настройки с переключателем.
 class SettingRow extends StatelessWidget {
   const SettingRow({
     super.key,
     required this.title,
-    required this.text,
     required this.value,
     required this.onChanged,
+    this.text,
     this.enabled = true,
     this.sub = false,
   });
 
   final String title;
-  final String text;
+  final String? text;
   final bool value;
   final ValueChanged<bool> onChanged;
 
@@ -58,14 +80,14 @@ class ChoiceRow extends StatelessWidget {
   const ChoiceRow({
     super.key,
     required this.title,
-    required this.text,
     required this.control,
+    this.text,
     this.enabled = true,
     this.sub = false,
   });
 
   final String title;
-  final String text;
+  final String? text;
   final Widget control;
 
   final bool enabled;
@@ -90,7 +112,7 @@ class _RowLayout extends StatelessWidget {
   });
 
   final String title;
-  final String text;
+  final String? text;
   final bool sub;
   final Widget control;
 
@@ -111,15 +133,17 @@ class _RowLayout extends StatelessWidget {
                     fontSize: sub ? 14 : 15,
                   ),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  text,
-                  style: const TextStyle(
-                    color: AppColors.muted,
-                    fontSize: 13,
-                    height: 1.4,
+                if (text case final text?) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    text,
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

@@ -42,7 +42,7 @@ Future<void> _prepareEnvironment() => _environment ??= () async {
 }();
 
 /// Действие пользователя в плеере: пауза, продолжение или перемотка.
-typedef PlayerEvent = ({String type, double time});
+typedef PlayerEvent = ({String type, double time, double rate});
 
 /// Встроенный просмотр сайта: страница, выбор серии и полный экран.
 class PlayerSession extends ChangeNotifier {
@@ -89,6 +89,19 @@ class PlayerSession extends ChangeNotifier {
   SiteChoice site = (dubbing: null, player: null, episode: null);
 
   FrameVideo? video;
+
+  /// Когда пришёл отчёт о [video].
+  DateTime? videoAt;
+
+  /// Позиция главного видео сейчас: с поправкой на время после отчёта.
+  double get videoTime {
+    final video = this.video;
+    final at = videoAt;
+    if (video == null) return 0;
+    if (video.paused || !video.ready || at == null) return video.time;
+    return video.time +
+        DateTime.now().difference(at).inMilliseconds / 1000 * video.rate;
+  }
 
   bool _mini = false;
   bool _ownPage = true;
@@ -189,14 +202,15 @@ class PlayerSession extends ChangeNotifier {
     control(pause ? 'pause' : 'play');
   }
 
-  /// Команда видео: pause, play или seek на [position] секунд.
-  void control(String action, {double? position}) {
+  /// Команда видео: pause, play, seek на [position] секунд или rate со
+  /// скоростью [rate].
+  void control(String action, {double? position, double? rate}) {
     if (_closed || !ready) return;
     final url = jsonEncode(action == 'pause' ? null : _videoFrame);
     unawaited(
       controller.executeScript(
         'window.__kirokuControl && window.__kirokuControl('
-        '${jsonEncode(action)}, ${jsonEncode(position)}, $url)',
+        '${jsonEncode(action)}, ${jsonEncode(rate ?? position)}, $url)',
       ),
     );
   }
@@ -269,8 +283,13 @@ class PlayerSession extends ChangeNotifier {
     if (message is Map && message['kiroku'] == 6) {
       final type = message['event'];
       _events.add((
-        type: type == 'seeked' ? 'seek' : '$type',
+        type: switch (type) {
+          'seeked' => 'seek',
+          'ratechange' => 'rate',
+          _ => '$type',
+        },
         time: (message['time'] as num?)?.toDouble() ?? 0,
+        rate: (message['rate'] as num?)?.toDouble() ?? 1,
       ));
       return;
     }
@@ -278,7 +297,9 @@ class PlayerSession extends ChangeNotifier {
     final report = FrameReport.fromMessage(message, now);
     if (report == null) return;
     _reports[report.url] = report;
-    video = mainVideo(_reports.values, now: now)?.video;
+    final main = mainVideo(_reports.values, now: now);
+    video = main?.video;
+    videoAt = main?.frame.at;
     final embedded = embeddedSession(_reports.values, now: now);
     _marker.reportEmbedded(embedded);
     if (embedded == null) return;

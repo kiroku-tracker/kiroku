@@ -32,6 +32,9 @@ class PartyServer {
   var _ticks = 0;
   Map<dynamic, dynamic>? _target;
   bool _playing = false;
+
+  /// Общая скорость комнаты.
+  double _rate = 1;
   PartyMember? _waitingFor;
   ({double time, DateTime at})? _lastSeek;
 
@@ -103,13 +106,18 @@ class PartyServer {
         _replaceOld(socket, member);
         _room();
       case 'state':
+        final ready = decoded['ready'] == true;
+        final now = DateTime.now();
         member
           ..watching = decoded['watching'] == true
           ..episode = (decoded['episode'] as num?)?.toInt()
           ..position = (decoded['position'] as num?)?.toDouble() ?? 0
           ..duration = (decoded['duration'] as num?)?.toDouble() ?? 0
           ..playing = decoded['playing'] == true
-          ..ready = decoded['ready'] == true;
+          ..rate = (decoded['rate'] as num?)?.toDouble() ?? 1
+          ..reportedAt = now
+          ..notReadySince = ready ? null : member.notReadySince ?? now
+          ..ready = ready;
       case 'event':
         _onEvent(socket, member, decoded);
       case 'open':
@@ -165,6 +173,20 @@ class PartyServer {
         _playing = true;
       case 'pause':
         _playing = false;
+      case 'rate':
+        final rate = (event['rate'] as num?)?.toDouble();
+        if (rate == null || rate <= 0) return;
+        if (!rights.contains(PartyRight.pause)) {
+          _send(from, {'t': 'denied', 'right': 'rate'});
+          member.commandedRate = null;
+          return;
+        }
+        _rate = rate;
+        for (final member in _members.values) {
+          member.commandedRate = null;
+        }
+        _tick();
+        return;
       case 'seek':
         final time = (event['time'] as num?)?.toDouble();
         if (time == null) return;
@@ -219,12 +241,13 @@ class PartyServer {
       final time = partyAlign(member, _members.values);
       if (time != null) _send(socket, {'t': 'seek', 'time': time});
     }
+    final now = DateTime.now();
     final plan = partyPlan(
       playing: _playing,
       episode: _episode,
       members: _members.values,
+      now: now,
     );
-    final now = DateTime.now();
     for (final MapEntry(key: socket, value: member) in _members.entries) {
       final play = plan.play[member.id];
       if (play == null || member.playing == play && member.ready) continue;
@@ -239,6 +262,24 @@ class PartyServer {
         ..commandedAt = now;
       _send(socket, {'t': 'play', 'on': play});
     }
+    for (final MapEntry(key: socket, value: member) in _members.entries) {
+      if (!member.watching) continue;
+      final rate = _rate;
+      if ((member.rate - rate).abs() < 0.01) {
+        member.commandedRate = rate;
+        continue;
+      }
+      final at = member.rateCommandedAt;
+      if (member.commandedRate == rate &&
+          at != null &&
+          now.difference(at) < const Duration(milliseconds: 1500)) {
+        continue;
+      }
+      member
+        ..commandedRate = rate
+        ..rateCommandedAt = now;
+      _send(socket, {'t': 'rate', 'value': rate});
+    }
     final changed = _waitingFor != plan.waitingFor;
     _waitingFor = plan.waitingFor;
     if (changed || ++_ticks % 2 == 0) _room();
@@ -249,6 +290,7 @@ class PartyServer {
 
   /// Рассылает состав комнаты.
   void _room() {
+    final now = DateTime.now();
     final watching = [
       for (final member in _members.values)
         if (member.watching && (_episode == null || member.episode == _episode))
@@ -257,6 +299,7 @@ class PartyServer {
     final room = {
       't': 'room',
       'playing': _playing,
+      'rate': _rate,
       'waiting': _waitingFor?.name,
       'position': watching.isEmpty
           ? 0
@@ -276,6 +319,7 @@ class PartyServer {
               member,
               episode: _episode,
               waitingFor: _waitingFor,
+              now: now,
             ),
           },
       ],

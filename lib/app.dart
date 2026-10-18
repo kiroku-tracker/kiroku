@@ -11,7 +11,7 @@ import 'core/theme/app_theme.dart';
 import 'core/toast.dart';
 import 'core/widgets/app_menu_anchor.dart';
 import 'features/calendar/calendar_screen.dart';
-import 'features/groups/groups_screen.dart';
+import 'features/discover/discover_screen.dart';
 import 'features/journal/journal_screen.dart';
 import 'features/library/library_screen.dart';
 import 'features/party/party_controller.dart';
@@ -70,11 +70,11 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   static const _sectionRoots = {
     AppSection.library: LibraryScreen(),
-    AppSection.groups: GroupsScreen(),
     AppSection.party: PartyScreen(),
     AppSection.calendar: CalendarScreen(),
     AppSection.journal: JournalScreen(),
     AppSection.search: SearchScreen(),
+    AppSection.discover: DiscoverScreen(),
     AppSection.settings: SettingsScreen(),
   };
 
@@ -158,10 +158,11 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   static const _numbered = [
     AppSection.library,
-    AppSection.groups,
+    AppSection.search,
+    AppSection.discover,
+    AppSection.party,
     AppSection.calendar,
     AppSection.journal,
-    AppSection.search,
   ];
   static const _digits = [
     LogicalKeyboardKey.digit1,
@@ -169,6 +170,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     LogicalKeyboardKey.digit3,
     LogicalKeyboardKey.digit4,
     LogicalKeyboardKey.digit5,
+    LogicalKeyboardKey.digit6,
   ];
 }
 
@@ -194,11 +196,11 @@ class _Sidebar extends ConsumerWidget {
 
   static const _top = [
     (AppSection.library, LucideIcons.library, 'Библиотека'),
-    (AppSection.groups, LucideIcons.folders, 'Группы'),
+    (AppSection.search, LucideIcons.search, 'Поиск'),
+    (AppSection.discover, LucideIcons.compass, 'Что посмотреть'),
     (AppSection.party, LucideIcons.users, 'Совместный просмотр'),
     (AppSection.calendar, LucideIcons.calendarDays, 'Календарь'),
     (AppSection.journal, LucideIcons.history, 'Журнал отметок'),
-    (AppSection.search, LucideIcons.search, 'Поиск'),
   ];
 
   @override

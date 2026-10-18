@@ -1261,6 +1261,17 @@ class $LibraryEntriesTable extends LibraryEntries
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _alertModeMeta = const VerificationMeta(
+    'alertMode',
+  );
+  @override
+  late final GeneratedColumn<String> alertMode = GeneratedColumn<String>(
+    'alert_mode',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _dubbingMeta = const VerificationMeta(
     'dubbing',
   );
@@ -1283,6 +1294,21 @@ class $LibraryEntriesTable extends LibraryEntries
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _favoriteMeta = const VerificationMeta(
+    'favorite',
+  );
+  @override
+  late final GeneratedColumn<bool> favorite = GeneratedColumn<bool>(
+    'favorite',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("favorite" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1296,8 +1322,10 @@ class $LibraryEntriesTable extends LibraryEntries
     franchiseOverride,
     muted,
     alertsOn,
+    alertMode,
     dubbing,
     dubbingSeen,
+    favorite,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1387,6 +1415,12 @@ class $LibraryEntriesTable extends LibraryEntries
         alertsOn.isAcceptableOrUnknown(data['alerts_on']!, _alertsOnMeta),
       );
     }
+    if (data.containsKey('alert_mode')) {
+      context.handle(
+        _alertModeMeta,
+        alertMode.isAcceptableOrUnknown(data['alert_mode']!, _alertModeMeta),
+      );
+    }
     if (data.containsKey('dubbing')) {
       context.handle(
         _dubbingMeta,
@@ -1400,6 +1434,12 @@ class $LibraryEntriesTable extends LibraryEntries
           data['dubbing_seen']!,
           _dubbingSeenMeta,
         ),
+      );
+    }
+    if (data.containsKey('favorite')) {
+      context.handle(
+        _favoriteMeta,
+        favorite.isAcceptableOrUnknown(data['favorite']!, _favoriteMeta),
       );
     }
     return context;
@@ -1455,6 +1495,10 @@ class $LibraryEntriesTable extends LibraryEntries
         DriftSqlType.bool,
         data['${effectivePrefix}alerts_on'],
       )!,
+      alertMode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}alert_mode'],
+      ),
       dubbing: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}dubbing'],
@@ -1463,6 +1507,10 @@ class $LibraryEntriesTable extends LibraryEntries
         DriftSqlType.string,
         data['${effectivePrefix}dubbing_seen'],
       ),
+      favorite: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}favorite'],
+      )!,
     );
   }
 
@@ -1484,8 +1532,12 @@ class LibraryEntry extends DataClass implements Insertable<LibraryEntry> {
   final String? franchiseOverride;
   final bool muted;
   final bool alertsOn;
+
+  /// Уведомления о сериях отдельно от общей настройки: имя EpisodeAlertMode.
+  final String? alertMode;
   final String? dubbing;
   final String? dubbingSeen;
+  final bool favorite;
   const LibraryEntry({
     required this.id,
     required this.animeId,
@@ -1498,8 +1550,10 @@ class LibraryEntry extends DataClass implements Insertable<LibraryEntry> {
     this.franchiseOverride,
     required this.muted,
     required this.alertsOn,
+    this.alertMode,
     this.dubbing,
     this.dubbingSeen,
+    required this.favorite,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1521,12 +1575,16 @@ class LibraryEntry extends DataClass implements Insertable<LibraryEntry> {
     }
     map['muted'] = Variable<bool>(muted);
     map['alerts_on'] = Variable<bool>(alertsOn);
+    if (!nullToAbsent || alertMode != null) {
+      map['alert_mode'] = Variable<String>(alertMode);
+    }
     if (!nullToAbsent || dubbing != null) {
       map['dubbing'] = Variable<String>(dubbing);
     }
     if (!nullToAbsent || dubbingSeen != null) {
       map['dubbing_seen'] = Variable<String>(dubbingSeen);
     }
+    map['favorite'] = Variable<bool>(favorite);
     return map;
   }
 
@@ -1549,12 +1607,16 @@ class LibraryEntry extends DataClass implements Insertable<LibraryEntry> {
           : Value(franchiseOverride),
       muted: Value(muted),
       alertsOn: Value(alertsOn),
+      alertMode: alertMode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(alertMode),
       dubbing: dubbing == null && nullToAbsent
           ? const Value.absent()
           : Value(dubbing),
       dubbingSeen: dubbingSeen == null && nullToAbsent
           ? const Value.absent()
           : Value(dubbingSeen),
+      favorite: Value(favorite),
     );
   }
 
@@ -1577,8 +1639,10 @@ class LibraryEntry extends DataClass implements Insertable<LibraryEntry> {
       ),
       muted: serializer.fromJson<bool>(json['muted']),
       alertsOn: serializer.fromJson<bool>(json['alertsOn']),
+      alertMode: serializer.fromJson<String?>(json['alertMode']),
       dubbing: serializer.fromJson<String?>(json['dubbing']),
       dubbingSeen: serializer.fromJson<String?>(json['dubbingSeen']),
+      favorite: serializer.fromJson<bool>(json['favorite']),
     );
   }
   @override
@@ -1596,8 +1660,10 @@ class LibraryEntry extends DataClass implements Insertable<LibraryEntry> {
       'franchiseOverride': serializer.toJson<String?>(franchiseOverride),
       'muted': serializer.toJson<bool>(muted),
       'alertsOn': serializer.toJson<bool>(alertsOn),
+      'alertMode': serializer.toJson<String?>(alertMode),
       'dubbing': serializer.toJson<String?>(dubbing),
       'dubbingSeen': serializer.toJson<String?>(dubbingSeen),
+      'favorite': serializer.toJson<bool>(favorite),
     };
   }
 
@@ -1613,8 +1679,10 @@ class LibraryEntry extends DataClass implements Insertable<LibraryEntry> {
     Value<String?> franchiseOverride = const Value.absent(),
     bool? muted,
     bool? alertsOn,
+    Value<String?> alertMode = const Value.absent(),
     Value<String?> dubbing = const Value.absent(),
     Value<String?> dubbingSeen = const Value.absent(),
+    bool? favorite,
   }) => LibraryEntry(
     id: id ?? this.id,
     animeId: animeId ?? this.animeId,
@@ -1629,8 +1697,10 @@ class LibraryEntry extends DataClass implements Insertable<LibraryEntry> {
         : this.franchiseOverride,
     muted: muted ?? this.muted,
     alertsOn: alertsOn ?? this.alertsOn,
+    alertMode: alertMode.present ? alertMode.value : this.alertMode,
     dubbing: dubbing.present ? dubbing.value : this.dubbing,
     dubbingSeen: dubbingSeen.present ? dubbingSeen.value : this.dubbingSeen,
+    favorite: favorite ?? this.favorite,
   );
   LibraryEntry copyWithCompanion(LibraryEntriesCompanion data) {
     return LibraryEntry(
@@ -1647,10 +1717,12 @@ class LibraryEntry extends DataClass implements Insertable<LibraryEntry> {
           : this.franchiseOverride,
       muted: data.muted.present ? data.muted.value : this.muted,
       alertsOn: data.alertsOn.present ? data.alertsOn.value : this.alertsOn,
+      alertMode: data.alertMode.present ? data.alertMode.value : this.alertMode,
       dubbing: data.dubbing.present ? data.dubbing.value : this.dubbing,
       dubbingSeen: data.dubbingSeen.present
           ? data.dubbingSeen.value
           : this.dubbingSeen,
+      favorite: data.favorite.present ? data.favorite.value : this.favorite,
     );
   }
 
@@ -1668,8 +1740,10 @@ class LibraryEntry extends DataClass implements Insertable<LibraryEntry> {
           ..write('franchiseOverride: $franchiseOverride, ')
           ..write('muted: $muted, ')
           ..write('alertsOn: $alertsOn, ')
+          ..write('alertMode: $alertMode, ')
           ..write('dubbing: $dubbing, ')
-          ..write('dubbingSeen: $dubbingSeen')
+          ..write('dubbingSeen: $dubbingSeen, ')
+          ..write('favorite: $favorite')
           ..write(')'))
         .toString();
   }
@@ -1687,8 +1761,10 @@ class LibraryEntry extends DataClass implements Insertable<LibraryEntry> {
     franchiseOverride,
     muted,
     alertsOn,
+    alertMode,
     dubbing,
     dubbingSeen,
+    favorite,
   );
   @override
   bool operator ==(Object other) =>
@@ -1705,8 +1781,10 @@ class LibraryEntry extends DataClass implements Insertable<LibraryEntry> {
           other.franchiseOverride == this.franchiseOverride &&
           other.muted == this.muted &&
           other.alertsOn == this.alertsOn &&
+          other.alertMode == this.alertMode &&
           other.dubbing == this.dubbing &&
-          other.dubbingSeen == this.dubbingSeen);
+          other.dubbingSeen == this.dubbingSeen &&
+          other.favorite == this.favorite);
 }
 
 class LibraryEntriesCompanion extends UpdateCompanion<LibraryEntry> {
@@ -1721,8 +1799,10 @@ class LibraryEntriesCompanion extends UpdateCompanion<LibraryEntry> {
   final Value<String?> franchiseOverride;
   final Value<bool> muted;
   final Value<bool> alertsOn;
+  final Value<String?> alertMode;
   final Value<String?> dubbing;
   final Value<String?> dubbingSeen;
+  final Value<bool> favorite;
   final Value<int> rowid;
   const LibraryEntriesCompanion({
     this.id = const Value.absent(),
@@ -1736,8 +1816,10 @@ class LibraryEntriesCompanion extends UpdateCompanion<LibraryEntry> {
     this.franchiseOverride = const Value.absent(),
     this.muted = const Value.absent(),
     this.alertsOn = const Value.absent(),
+    this.alertMode = const Value.absent(),
     this.dubbing = const Value.absent(),
     this.dubbingSeen = const Value.absent(),
+    this.favorite = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LibraryEntriesCompanion.insert({
@@ -1752,8 +1834,10 @@ class LibraryEntriesCompanion extends UpdateCompanion<LibraryEntry> {
     this.franchiseOverride = const Value.absent(),
     this.muted = const Value.absent(),
     this.alertsOn = const Value.absent(),
+    this.alertMode = const Value.absent(),
     this.dubbing = const Value.absent(),
     this.dubbingSeen = const Value.absent(),
+    this.favorite = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        animeId = Value(animeId),
@@ -1772,8 +1856,10 @@ class LibraryEntriesCompanion extends UpdateCompanion<LibraryEntry> {
     Expression<String>? franchiseOverride,
     Expression<bool>? muted,
     Expression<bool>? alertsOn,
+    Expression<String>? alertMode,
     Expression<String>? dubbing,
     Expression<String>? dubbingSeen,
+    Expression<bool>? favorite,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1788,8 +1874,10 @@ class LibraryEntriesCompanion extends UpdateCompanion<LibraryEntry> {
       if (franchiseOverride != null) 'franchise_override': franchiseOverride,
       if (muted != null) 'muted': muted,
       if (alertsOn != null) 'alerts_on': alertsOn,
+      if (alertMode != null) 'alert_mode': alertMode,
       if (dubbing != null) 'dubbing': dubbing,
       if (dubbingSeen != null) 'dubbing_seen': dubbingSeen,
+      if (favorite != null) 'favorite': favorite,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1806,8 +1894,10 @@ class LibraryEntriesCompanion extends UpdateCompanion<LibraryEntry> {
     Value<String?>? franchiseOverride,
     Value<bool>? muted,
     Value<bool>? alertsOn,
+    Value<String?>? alertMode,
     Value<String?>? dubbing,
     Value<String?>? dubbingSeen,
+    Value<bool>? favorite,
     Value<int>? rowid,
   }) {
     return LibraryEntriesCompanion(
@@ -1822,8 +1912,10 @@ class LibraryEntriesCompanion extends UpdateCompanion<LibraryEntry> {
       franchiseOverride: franchiseOverride ?? this.franchiseOverride,
       muted: muted ?? this.muted,
       alertsOn: alertsOn ?? this.alertsOn,
+      alertMode: alertMode ?? this.alertMode,
       dubbing: dubbing ?? this.dubbing,
       dubbingSeen: dubbingSeen ?? this.dubbingSeen,
+      favorite: favorite ?? this.favorite,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1864,11 +1956,17 @@ class LibraryEntriesCompanion extends UpdateCompanion<LibraryEntry> {
     if (alertsOn.present) {
       map['alerts_on'] = Variable<bool>(alertsOn.value);
     }
+    if (alertMode.present) {
+      map['alert_mode'] = Variable<String>(alertMode.value);
+    }
     if (dubbing.present) {
       map['dubbing'] = Variable<String>(dubbing.value);
     }
     if (dubbingSeen.present) {
       map['dubbing_seen'] = Variable<String>(dubbingSeen.value);
+    }
+    if (favorite.present) {
+      map['favorite'] = Variable<bool>(favorite.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -1890,8 +1988,10 @@ class LibraryEntriesCompanion extends UpdateCompanion<LibraryEntry> {
           ..write('franchiseOverride: $franchiseOverride, ')
           ..write('muted: $muted, ')
           ..write('alertsOn: $alertsOn, ')
+          ..write('alertMode: $alertMode, ')
           ..write('dubbing: $dubbing, ')
           ..write('dubbingSeen: $dubbingSeen, ')
+          ..write('favorite: $favorite, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3601,6 +3701,21 @@ class $FranchisesTable extends Franchises
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _favoriteMeta = const VerificationMeta(
+    'favorite',
+  );
+  @override
+  late final GeneratedColumn<bool> favorite = GeneratedColumn<bool>(
+    'favorite',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("favorite" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _partsLoadedAtMeta = const VerificationMeta(
     'partsLoadedAt',
   );
@@ -3634,6 +3749,7 @@ class $FranchisesTable extends Franchises
     dubbingSeen,
     muted,
     alertsOn,
+    favorite,
     partsLoadedAt,
     updatedAt,
   ];
@@ -3705,6 +3821,12 @@ class $FranchisesTable extends Franchises
         alertsOn.isAcceptableOrUnknown(data['alerts_on']!, _alertsOnMeta),
       );
     }
+    if (data.containsKey('favorite')) {
+      context.handle(
+        _favoriteMeta,
+        favorite.isAcceptableOrUnknown(data['favorite']!, _favoriteMeta),
+      );
+    }
     if (data.containsKey('parts_loaded_at')) {
       context.handle(
         _partsLoadedAtMeta,
@@ -3763,6 +3885,10 @@ class $FranchisesTable extends Franchises
         DriftSqlType.bool,
         data['${effectivePrefix}alerts_on'],
       )!,
+      favorite: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}favorite'],
+      )!,
       partsLoadedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}parts_loaded_at'],
@@ -3789,6 +3915,7 @@ class Franchise extends DataClass implements Insertable<Franchise> {
   final String? dubbingSeen;
   final bool muted;
   final bool alertsOn;
+  final bool favorite;
   final DateTime? partsLoadedAt;
   final DateTime updatedAt;
   const Franchise({
@@ -3800,6 +3927,7 @@ class Franchise extends DataClass implements Insertable<Franchise> {
     this.dubbingSeen,
     required this.muted,
     required this.alertsOn,
+    required this.favorite,
     this.partsLoadedAt,
     required this.updatedAt,
   });
@@ -3824,6 +3952,7 @@ class Franchise extends DataClass implements Insertable<Franchise> {
     }
     map['muted'] = Variable<bool>(muted);
     map['alerts_on'] = Variable<bool>(alertsOn);
+    map['favorite'] = Variable<bool>(favorite);
     if (!nullToAbsent || partsLoadedAt != null) {
       map['parts_loaded_at'] = Variable<DateTime>(partsLoadedAt);
     }
@@ -3849,6 +3978,7 @@ class Franchise extends DataClass implements Insertable<Franchise> {
           : Value(dubbingSeen),
       muted: Value(muted),
       alertsOn: Value(alertsOn),
+      favorite: Value(favorite),
       partsLoadedAt: partsLoadedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(partsLoadedAt),
@@ -3870,6 +4000,7 @@ class Franchise extends DataClass implements Insertable<Franchise> {
       dubbingSeen: serializer.fromJson<String?>(json['dubbingSeen']),
       muted: serializer.fromJson<bool>(json['muted']),
       alertsOn: serializer.fromJson<bool>(json['alertsOn']),
+      favorite: serializer.fromJson<bool>(json['favorite']),
       partsLoadedAt: serializer.fromJson<DateTime?>(json['partsLoadedAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -3886,6 +4017,7 @@ class Franchise extends DataClass implements Insertable<Franchise> {
       'dubbingSeen': serializer.toJson<String?>(dubbingSeen),
       'muted': serializer.toJson<bool>(muted),
       'alertsOn': serializer.toJson<bool>(alertsOn),
+      'favorite': serializer.toJson<bool>(favorite),
       'partsLoadedAt': serializer.toJson<DateTime?>(partsLoadedAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -3900,6 +4032,7 @@ class Franchise extends DataClass implements Insertable<Franchise> {
     Value<String?> dubbingSeen = const Value.absent(),
     bool? muted,
     bool? alertsOn,
+    bool? favorite,
     Value<DateTime?> partsLoadedAt = const Value.absent(),
     DateTime? updatedAt,
   }) => Franchise(
@@ -3911,6 +4044,7 @@ class Franchise extends DataClass implements Insertable<Franchise> {
     dubbingSeen: dubbingSeen.present ? dubbingSeen.value : this.dubbingSeen,
     muted: muted ?? this.muted,
     alertsOn: alertsOn ?? this.alertsOn,
+    favorite: favorite ?? this.favorite,
     partsLoadedAt: partsLoadedAt.present
         ? partsLoadedAt.value
         : this.partsLoadedAt,
@@ -3930,6 +4064,7 @@ class Franchise extends DataClass implements Insertable<Franchise> {
           : this.dubbingSeen,
       muted: data.muted.present ? data.muted.value : this.muted,
       alertsOn: data.alertsOn.present ? data.alertsOn.value : this.alertsOn,
+      favorite: data.favorite.present ? data.favorite.value : this.favorite,
       partsLoadedAt: data.partsLoadedAt.present
           ? data.partsLoadedAt.value
           : this.partsLoadedAt,
@@ -3948,6 +4083,7 @@ class Franchise extends DataClass implements Insertable<Franchise> {
           ..write('dubbingSeen: $dubbingSeen, ')
           ..write('muted: $muted, ')
           ..write('alertsOn: $alertsOn, ')
+          ..write('favorite: $favorite, ')
           ..write('partsLoadedAt: $partsLoadedAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -3964,6 +4100,7 @@ class Franchise extends DataClass implements Insertable<Franchise> {
     dubbingSeen,
     muted,
     alertsOn,
+    favorite,
     partsLoadedAt,
     updatedAt,
   );
@@ -3979,6 +4116,7 @@ class Franchise extends DataClass implements Insertable<Franchise> {
           other.dubbingSeen == this.dubbingSeen &&
           other.muted == this.muted &&
           other.alertsOn == this.alertsOn &&
+          other.favorite == this.favorite &&
           other.partsLoadedAt == this.partsLoadedAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -3992,6 +4130,7 @@ class FranchisesCompanion extends UpdateCompanion<Franchise> {
   final Value<String?> dubbingSeen;
   final Value<bool> muted;
   final Value<bool> alertsOn;
+  final Value<bool> favorite;
   final Value<DateTime?> partsLoadedAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -4004,6 +4143,7 @@ class FranchisesCompanion extends UpdateCompanion<Franchise> {
     this.dubbingSeen = const Value.absent(),
     this.muted = const Value.absent(),
     this.alertsOn = const Value.absent(),
+    this.favorite = const Value.absent(),
     this.partsLoadedAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -4017,6 +4157,7 @@ class FranchisesCompanion extends UpdateCompanion<Franchise> {
     this.dubbingSeen = const Value.absent(),
     this.muted = const Value.absent(),
     this.alertsOn = const Value.absent(),
+    this.favorite = const Value.absent(),
     this.partsLoadedAt = const Value.absent(),
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -4031,6 +4172,7 @@ class FranchisesCompanion extends UpdateCompanion<Franchise> {
     Expression<String>? dubbingSeen,
     Expression<bool>? muted,
     Expression<bool>? alertsOn,
+    Expression<bool>? favorite,
     Expression<DateTime>? partsLoadedAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -4044,6 +4186,7 @@ class FranchisesCompanion extends UpdateCompanion<Franchise> {
       if (dubbingSeen != null) 'dubbing_seen': dubbingSeen,
       if (muted != null) 'muted': muted,
       if (alertsOn != null) 'alerts_on': alertsOn,
+      if (favorite != null) 'favorite': favorite,
       if (partsLoadedAt != null) 'parts_loaded_at': partsLoadedAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -4059,6 +4202,7 @@ class FranchisesCompanion extends UpdateCompanion<Franchise> {
     Value<String?>? dubbingSeen,
     Value<bool>? muted,
     Value<bool>? alertsOn,
+    Value<bool>? favorite,
     Value<DateTime?>? partsLoadedAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -4072,6 +4216,7 @@ class FranchisesCompanion extends UpdateCompanion<Franchise> {
       dubbingSeen: dubbingSeen ?? this.dubbingSeen,
       muted: muted ?? this.muted,
       alertsOn: alertsOn ?? this.alertsOn,
+      favorite: favorite ?? this.favorite,
       partsLoadedAt: partsLoadedAt ?? this.partsLoadedAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -4105,6 +4250,9 @@ class FranchisesCompanion extends UpdateCompanion<Franchise> {
     if (alertsOn.present) {
       map['alerts_on'] = Variable<bool>(alertsOn.value);
     }
+    if (favorite.present) {
+      map['favorite'] = Variable<bool>(favorite.value);
+    }
     if (partsLoadedAt.present) {
       map['parts_loaded_at'] = Variable<DateTime>(partsLoadedAt.value);
     }
@@ -4128,6 +4276,7 @@ class FranchisesCompanion extends UpdateCompanion<Franchise> {
           ..write('dubbingSeen: $dubbingSeen, ')
           ..write('muted: $muted, ')
           ..write('alertsOn: $alertsOn, ')
+          ..write('favorite: $favorite, ')
           ..write('partsLoadedAt: $partsLoadedAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -8427,8 +8576,10 @@ typedef $$LibraryEntriesTableCreateCompanionBuilder =
       Value<String?> franchiseOverride,
       Value<bool> muted,
       Value<bool> alertsOn,
+      Value<String?> alertMode,
       Value<String?> dubbing,
       Value<String?> dubbingSeen,
+      Value<bool> favorite,
       Value<int> rowid,
     });
 typedef $$LibraryEntriesTableUpdateCompanionBuilder =
@@ -8444,8 +8595,10 @@ typedef $$LibraryEntriesTableUpdateCompanionBuilder =
       Value<String?> franchiseOverride,
       Value<bool> muted,
       Value<bool> alertsOn,
+      Value<String?> alertMode,
       Value<String?> dubbing,
       Value<String?> dubbingSeen,
+      Value<bool> favorite,
       Value<int> rowid,
     });
 
@@ -8552,6 +8705,11 @@ class $$LibraryEntriesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get alertMode => $composableBuilder(
+    column: $table.alertMode,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get dubbing => $composableBuilder(
     column: $table.dubbing,
     builder: (column) => ColumnFilters(column),
@@ -8559,6 +8717,11 @@ class $$LibraryEntriesTableFilterComposer
 
   ColumnFilters<String> get dubbingSeen => $composableBuilder(
     column: $table.dubbingSeen,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get favorite => $composableBuilder(
+    column: $table.favorite,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8670,6 +8833,11 @@ class $$LibraryEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get alertMode => $composableBuilder(
+    column: $table.alertMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get dubbing => $composableBuilder(
     column: $table.dubbing,
     builder: (column) => ColumnOrderings(column),
@@ -8677,6 +8845,11 @@ class $$LibraryEntriesTableOrderingComposer
 
   ColumnOrderings<String> get dubbingSeen => $composableBuilder(
     column: $table.dubbingSeen,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get favorite => $composableBuilder(
+    column: $table.favorite,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -8745,6 +8918,9 @@ class $$LibraryEntriesTableAnnotationComposer
   GeneratedColumn<bool> get alertsOn =>
       $composableBuilder(column: $table.alertsOn, builder: (column) => column);
 
+  GeneratedColumn<String> get alertMode =>
+      $composableBuilder(column: $table.alertMode, builder: (column) => column);
+
   GeneratedColumn<String> get dubbing =>
       $composableBuilder(column: $table.dubbing, builder: (column) => column);
 
@@ -8752,6 +8928,9 @@ class $$LibraryEntriesTableAnnotationComposer
     column: $table.dubbingSeen,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get favorite =>
+      $composableBuilder(column: $table.favorite, builder: (column) => column);
 
   $$AnimesTableAnnotationComposer get animeId {
     final $$AnimesTableAnnotationComposer composer = $composerBuilder(
@@ -8843,8 +9022,10 @@ class $$LibraryEntriesTableTableManager
                 Value<String?> franchiseOverride = const Value.absent(),
                 Value<bool> muted = const Value.absent(),
                 Value<bool> alertsOn = const Value.absent(),
+                Value<String?> alertMode = const Value.absent(),
                 Value<String?> dubbing = const Value.absent(),
                 Value<String?> dubbingSeen = const Value.absent(),
+                Value<bool> favorite = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LibraryEntriesCompanion(
                 id: id,
@@ -8858,8 +9039,10 @@ class $$LibraryEntriesTableTableManager
                 franchiseOverride: franchiseOverride,
                 muted: muted,
                 alertsOn: alertsOn,
+                alertMode: alertMode,
                 dubbing: dubbing,
                 dubbingSeen: dubbingSeen,
+                favorite: favorite,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -8875,8 +9058,10 @@ class $$LibraryEntriesTableTableManager
                 Value<String?> franchiseOverride = const Value.absent(),
                 Value<bool> muted = const Value.absent(),
                 Value<bool> alertsOn = const Value.absent(),
+                Value<String?> alertMode = const Value.absent(),
                 Value<String?> dubbing = const Value.absent(),
                 Value<String?> dubbingSeen = const Value.absent(),
+                Value<bool> favorite = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LibraryEntriesCompanion.insert(
                 id: id,
@@ -8890,8 +9075,10 @@ class $$LibraryEntriesTableTableManager
                 franchiseOverride: franchiseOverride,
                 muted: muted,
                 alertsOn: alertsOn,
+                alertMode: alertMode,
                 dubbing: dubbing,
                 dubbingSeen: dubbingSeen,
+                favorite: favorite,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -10183,6 +10370,7 @@ typedef $$FranchisesTableCreateCompanionBuilder = FranchisesCompanion Function({
   Value<String?> dubbingSeen,
   Value<bool> muted,
   Value<bool> alertsOn,
+  Value<bool> favorite,
   Value<DateTime?> partsLoadedAt,
   required DateTime updatedAt,
   Value<int> rowid,
@@ -10196,6 +10384,7 @@ typedef $$FranchisesTableUpdateCompanionBuilder = FranchisesCompanion Function({
   Value<String?> dubbingSeen,
   Value<bool> muted,
   Value<bool> alertsOn,
+  Value<bool> favorite,
   Value<DateTime?> partsLoadedAt,
   Value<DateTime> updatedAt,
   Value<int> rowid,
@@ -10247,6 +10436,11 @@ class $$FranchisesTableFilterComposer
 
   ColumnFilters<bool> get alertsOn => $composableBuilder(
     column: $table.alertsOn,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get favorite => $composableBuilder(
+    column: $table.favorite,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10310,6 +10504,11 @@ class $$FranchisesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get favorite => $composableBuilder(
+    column: $table.favorite,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get partsLoadedAt => $composableBuilder(
     column: $table.partsLoadedAt,
     builder: (column) => ColumnOrderings(column),
@@ -10357,6 +10556,9 @@ class $$FranchisesTableAnnotationComposer
 
   GeneratedColumn<bool> get alertsOn =>
       $composableBuilder(column: $table.alertsOn, builder: (column) => column);
+
+  GeneratedColumn<bool> get favorite =>
+      $composableBuilder(column: $table.favorite, builder: (column) => column);
 
   GeneratedColumn<DateTime> get partsLoadedAt => $composableBuilder(
     column: $table.partsLoadedAt,
@@ -10406,6 +10608,7 @@ class $$FranchisesTableTableManager
                 Value<String?> dubbingSeen = const Value.absent(),
                 Value<bool> muted = const Value.absent(),
                 Value<bool> alertsOn = const Value.absent(),
+                Value<bool> favorite = const Value.absent(),
                 Value<DateTime?> partsLoadedAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -10418,6 +10621,7 @@ class $$FranchisesTableTableManager
                 dubbingSeen: dubbingSeen,
                 muted: muted,
                 alertsOn: alertsOn,
+                favorite: favorite,
                 partsLoadedAt: partsLoadedAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -10432,6 +10636,7 @@ class $$FranchisesTableTableManager
                 Value<String?> dubbingSeen = const Value.absent(),
                 Value<bool> muted = const Value.absent(),
                 Value<bool> alertsOn = const Value.absent(),
+                Value<bool> favorite = const Value.absent(),
                 Value<DateTime?> partsLoadedAt = const Value.absent(),
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -10444,6 +10649,7 @@ class $$FranchisesTableTableManager
                 dubbingSeen: dubbingSeen,
                 muted: muted,
                 alertsOn: alertsOn,
+                favorite: favorite,
                 partsLoadedAt: partsLoadedAt,
                 updatedAt: updatedAt,
                 rowid: rowid,

@@ -2,19 +2,22 @@ import '../../data/database/app_database.dart';
 import '../../data/database/settings_repository.dart';
 import '../../data/database/watch_status.dart';
 
-/// Сообщать ли о новых сериях тайтла по общей настройке.
-bool episodeAlertsByDefault(LibraryEntry entry, AppPrefs prefs) {
-  final status = WatchStatus.fromName(entry.status);
-  return prefs.notifyEpisodes &&
-      (status == WatchStatus.watching || status == WatchStatus.planned);
-}
+/// Уведомления о сериях тайтла по общей настройке: у «Смотрю» о каждой
+/// серии.
+EpisodeAlertMode defaultAlertMode(LibraryEntry entry, AppPrefs prefs) =>
+    switch (WatchStatus.fromName(entry.status)) {
+      WatchStatus.watching => EpisodeAlertMode.episodes,
+      WatchStatus.planned => prefs.alertPlanned,
+      _ => EpisodeAlertMode.off,
+    };
 
-/// Сообщать ли о новых сериях тайтла.
-bool episodeAlerts(LibraryEntry entry, AppPrefs prefs) {
-  if (entry.muted) return false;
-  if (entry.alertsOn) return true;
-  return episodeAlertsByDefault(entry, prefs);
-}
+/// Уведомления о сериях, выбранные у тайтла отдельно.
+EpisodeAlertMode? ownAlertMode(LibraryEntry entry) =>
+    EpisodeAlertMode.values.asNameMap()[entry.alertMode];
+
+/// Уведомления о сериях тайтла.
+EpisodeAlertMode alertModeOf(LibraryEntry entry, AppPrefs prefs) =>
+    ownAlertMode(entry) ?? defaultAlertMode(entry, prefs);
 
 /// Сообщать ли о новых сезонах франшизы.
 bool seasonAlerts(Franchise? franchise, AppPrefs prefs) {

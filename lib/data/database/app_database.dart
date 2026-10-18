@@ -57,9 +57,14 @@ class LibraryEntries extends Table {
 
   BoolColumn get alertsOn => boolean().withDefault(const Constant(false))();
 
+  /// Уведомления о сериях отдельно от общей настройки: имя EpisodeAlertMode.
+  TextColumn get alertMode => text().nullable()();
+
   TextColumn get dubbing => text().nullable()();
 
   TextColumn get dubbingSeen => text().nullable()();
+
+  BoolColumn get favorite => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -133,6 +138,8 @@ class Franchises extends Table {
   BoolColumn get muted => boolean().withDefault(const Constant(false))();
 
   BoolColumn get alertsOn => boolean().withDefault(const Constant(false))();
+
+  BoolColumn get favorite => boolean().withDefault(const Constant(false))();
   DateTimeColumn get partsLoadedAt => dateTime().nullable()();
   DateTimeColumn get updatedAt => dateTime()();
 
@@ -286,7 +293,7 @@ class AppDatabase extends _$AppDatabase {
   @override
   int get schemaVersion => currentSchema;
 
-  static const currentSchema = 12;
+  static const currentSchema = 14;
 
   static const fileName = 'kiroku';
 
@@ -351,6 +358,21 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 12) {
         await _addColumn(migrator, animes, animes.posterOriginalUrl);
+      }
+      if (from < 13) {
+        await _addColumn(migrator, libraryEntries, libraryEntries.favorite);
+        await _addColumn(migrator, franchises, franchises.favorite);
+      }
+      if (from < 14) {
+        await _addColumn(migrator, libraryEntries, libraryEntries.alertMode);
+        await customStatement(
+          "UPDATE library_entries SET alert_mode = 'off' "
+          'WHERE muted = 1 AND alert_mode IS NULL',
+        );
+        await customStatement(
+          "UPDATE library_entries SET alert_mode = 'episodes' "
+          'WHERE alerts_on = 1 AND alert_mode IS NULL',
+        );
       }
     },
     beforeOpen: (details) async {

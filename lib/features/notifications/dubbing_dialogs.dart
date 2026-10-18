@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../core/labels.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/toast.dart';
 import '../../data/database/app_database.dart';
@@ -12,10 +13,6 @@ import '../../data/providers.dart';
 import '../../data/watch/dubbing_rules.dart';
 import '../../data/watch/site_episodes_repository.dart';
 import 'alert_rules.dart';
-
-const _explanation =
-    'Уведомление придёт, когда серия выйдет на YummyAnime в этой озвучке. '
-    '«Автоматически»: озвучка последнего просмотра.';
 
 /// Окно озвучки тайтла.
 Future<void> showTitleDubbingDialog(
@@ -43,46 +40,37 @@ class _TitleDubbingDialog extends ConsumerWidget {
       franchise,
     );
     final library = ref.read(libraryRepositoryProvider);
-    final on = episodeAlerts(entry, prefs);
-    final byDefault = episodeAlertsByDefault(entry, prefs);
+    final mode = alertModeOf(entry, prefs);
+    final byDefault = defaultAlertMode(entry, prefs);
     return _DubbingDialog(
       title: 'Уведомления: ${anime.title}',
       current: entry.dubbing,
-      alerts: on,
-      alertsByDefault: byDefault,
-      alertsTitle: 'Уведомлять о новых сериях',
+      mode: mode,
+      modeByDefault: byDefault,
       autoDetail: switch (auto?.source) {
-        null => 'пока не известна',
-        DubbingSource.franchise => 'как у франшизы: ${auto!.name}',
-        DubbingSource.seen => 'по просмотру: ${auto!.name}',
-        DubbingSource.franchiseSeen => 'по франшизе: ${auto!.name}',
-        DubbingSource.title => auto!.name,
+        null => 'пока не известен',
+        DubbingSource.franchise => '${auto!.name}, как у франшизы',
+        _ => auto!.name,
       },
-      noneDetail: prefs.episodeAlert.label.toLowerCase(),
+      noneDetail: prefs.episodeAlert.label,
       load: () async {
         final site = ref.read(siteEpisodesRepositoryProvider);
         await site.refresh(anime.id);
         return (await site.read(anime.id)).byDubbing;
       },
-      onSave: (value, alerts) async {
+      onSave: (value, _, chosen) async {
         final changes = <String>[];
         if (value != entry.dubbing) {
           await library.setDubbing(anime.id, value);
           changes.add(_describe(value));
         }
-        final alertsChanged = alerts != null && alerts != on;
-        if (alertsChanged) {
-          final flags = alertFlags(on: alerts, byDefault: byDefault);
-          await library.setAlerts(
+        final modeChanged = chosen != null && chosen != mode;
+        if (modeChanged) {
+          await library.setAlertMode(
             anime.id,
-            muted: flags.muted,
-            alertsOn: flags.alertsOn,
+            chosen == byDefault ? null : chosen,
           );
-          changes.add(
-            alerts
-                ? 'уведомления о сериях включены'
-                : 'уведомлений о сериях не будет',
-          );
+          changes.add(_describeMode(chosen));
         }
         return (
           text: '«${anime.title}»: ${changes.join(', ')}',
@@ -90,12 +78,8 @@ class _TitleDubbingDialog extends ConsumerWidget {
             if (value != entry.dubbing) {
               await library.setDubbing(anime.id, entry.dubbing);
             }
-            if (alertsChanged) {
-              await library.setAlerts(
-                anime.id,
-                muted: entry.muted,
-                alertsOn: entry.alertsOn,
-              );
+            if (modeChanged) {
+              await library.setAlertMode(anime.id, ownAlertMode(entry));
             }
           },
         );
@@ -143,11 +127,11 @@ class _FranchiseDubbingDialog extends ConsumerWidget {
       title: 'Уведомления: $name',
       alerts: on,
       alertsByDefault: prefs.notifyFranchises,
-      alertsTitle: 'Уведомлять о новых сезонах',
-      note: 'Для всех частей. Озвучка, выбранная у части, важнее.',
+      alertsTitle: 'Новые части',
+      note: 'Для всех частей, кроме частей со своим переводом',
       current: franchise?.dubbing,
-      autoDetail: seen == null ? 'пока не известна' : 'по просмотру: $seen',
-      noneDetail: prefs.episodeAlert.label.toLowerCase(),
+      autoDetail: seen ?? 'пока не известен',
+      noneDetail: prefs.episodeAlert.label,
       load: () async {
         final site = ref.read(siteEpisodesRepositoryProvider);
         final result = <String, int>{};
@@ -163,7 +147,7 @@ class _FranchiseDubbingDialog extends ConsumerWidget {
         }
         return result;
       },
-      onSave: (value, alerts) async {
+      onSave: (value, alerts, _) async {
         final undos = <Future<void> Function()>[];
         final changes = <String>[];
         if (value != franchise?.dubbing) {
@@ -183,7 +167,9 @@ class _FranchiseDubbingDialog extends ConsumerWidget {
             ),
           );
           changes.add(
-            alerts ? 'о новых сезонах сообщать' : 'о новых сезонах не сообщать',
+            alerts
+                ? 'уведомления о новых частях'
+                : 'без уведомлений о новых частях',
           );
         }
         return (
@@ -199,10 +185,17 @@ class _FranchiseDubbingDialog extends ConsumerWidget {
   }
 }
 
+String _describeMode(EpisodeAlertMode mode) => switch (mode) {
+  EpisodeAlertMode.off => 'без уведомлений о сериях',
+  EpisodeAlertMode.premiere => 'уведомление о премьере',
+  EpisodeAlertMode.episodes => 'уведомления о каждой серии',
+  EpisodeAlertMode.finished => 'уведомление, когда выйдут все серии',
+};
+
 String _describe(String? value) => switch (value) {
-  null => 'озвучка автоматически',
-  '' => 'озвучку не ждать',
-  _ => 'озвучка $value',
+  null => 'перевод автоматически',
+  '' => 'перевод как в настройках',
+  _ => 'перевод $value',
 };
 
 /// Окно выбора озвучки.
@@ -218,6 +211,8 @@ class _DubbingDialog extends ConsumerStatefulWidget {
     this.alerts,
     this.alertsByDefault = false,
     this.alertsTitle = '',
+    this.mode,
+    this.modeByDefault,
   });
 
   final String title;
@@ -227,6 +222,10 @@ class _DubbingDialog extends ConsumerStatefulWidget {
   final bool alertsByDefault;
   final String alertsTitle;
 
+  /// Когда сообщать о сериях тайтла; у франшизы нет.
+  final EpisodeAlertMode? mode;
+  final EpisodeAlertMode? modeByDefault;
+
   final String? current;
   final String autoDetail;
   final String noneDetail;
@@ -235,6 +234,7 @@ class _DubbingDialog extends ConsumerStatefulWidget {
   final Future<({String text, Future<void> Function() undo})> Function(
     String? value,
     bool? alerts,
+    EpisodeAlertMode? mode,
   )
   onSave;
 
@@ -245,6 +245,7 @@ class _DubbingDialog extends ConsumerStatefulWidget {
 class _DubbingDialogState extends ConsumerState<_DubbingDialog> {
   late String? _selected = widget.current;
   late bool? _alerts = widget.alerts;
+  late EpisodeAlertMode? _mode = widget.mode;
   Map<String, int>? _options;
   String? _error;
 
@@ -269,11 +270,13 @@ class _DubbingDialogState extends ConsumerState<_DubbingDialog> {
   Future<void> _save() async {
     final navigator = Navigator.of(context);
     final toast = ref.read(toastProvider.notifier);
-    if (_selected == widget.current && _alerts == widget.alerts) {
+    if (_selected == widget.current &&
+        _alerts == widget.alerts &&
+        _mode == widget.mode) {
       navigator.pop();
       return;
     }
-    final result = await widget.onSave(_selected, _alerts);
+    final result = await widget.onSave(_selected, _alerts, _mode);
     navigator.pop();
     toast.show(result.text, undo: result.undo);
   }
@@ -295,12 +298,24 @@ class _DubbingDialogState extends ConsumerState<_DubbingDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              [?widget.note, _explanation].join(' '),
-              style: const TextStyle(color: AppColors.muted, height: 1.45),
-            ),
-            if (_alerts case final alerts?) ...[
-              const SizedBox(height: 8),
+            if (_mode case final mode?) ...[
+              const Text(
+                'Новые серии',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              for (final option in EpisodeAlertMode.values)
+                _Option(
+                  label: option.label,
+                  detail: [
+                    if (option == EpisodeAlertMode.premiere) '1-я серия',
+                    if (option == widget.modeByDefault) 'по умолчанию',
+                  ].join(' · '),
+                  selected: mode == option,
+                  onTap: () => setState(() => _mode = option),
+                ),
+            ],
+            if (_alerts case final alerts?)
               Row(
                 children: [
                   Expanded(
@@ -314,8 +329,8 @@ class _DubbingDialogState extends ConsumerState<_DubbingDialog> {
                         const SizedBox(height: 2),
                         Text(
                           alerts == widget.alertsByDefault
-                              ? 'По общей настройке.'
-                              : 'Отдельно от общей настройки.',
+                              ? 'По умолчанию'
+                              : 'Своя настройка',
                           style: const TextStyle(color: AppColors.muted),
                         ),
                       ],
@@ -328,9 +343,16 @@ class _DubbingDialogState extends ConsumerState<_DubbingDialog> {
                   ),
                 ],
               ),
-              const Divider(height: 14, color: AppColors.panelBorder),
+            const Divider(height: 20, color: AppColors.panelBorder),
+            const Text(
+              'Ждать перевод',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            if (widget.note case final note?) ...[
+              const SizedBox(height: 2),
+              Text(note, style: const TextStyle(color: AppColors.muted)),
             ],
-            const SizedBox(height: 12),
+            const SizedBox(height: 4),
             _Option(
               label: 'Автоматически',
               detail: widget.autoDetail,
@@ -338,7 +360,7 @@ class _DubbingDialogState extends ConsumerState<_DubbingDialog> {
               onTap: () => setState(() => _selected = null),
             ),
             _Option(
-              label: 'Не ждать озвучку',
+              label: 'Как в настройках',
               detail: widget.noneDetail,
               selected: chosen == '',
               onTap: () => setState(() => _selected = ''),
@@ -347,19 +369,19 @@ class _DubbingDialogState extends ConsumerState<_DubbingDialog> {
             if (chosenMissing)
               _Option(
                 label: chosen,
-                detail: 'серий на сайте пока нет',
+                detail: 'серий пока нет',
                 selected: true,
                 onTap: () {},
               ),
             ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 320),
+              constraints: const BoxConstraints(maxHeight: 240),
               child: SingleChildScrollView(
                 child: Column(
                   children: [
                     for (final option in options)
                       _Option(
                         label: option.key,
-                        detail: 'до ${option.value}-й серии',
+                        detail: episodesLabel(option.value),
                         selected: chosen == option.key,
                         onTap: () => setState(() => _selected = option.key),
                       ),
@@ -371,7 +393,7 @@ class _DubbingDialogState extends ConsumerState<_DubbingDialog> {
               const Padding(
                 padding: EdgeInsets.only(top: 8),
                 child: Text(
-                  'Загрузка озвучек с YummyAnime…',
+                  'Загрузка переводов с YummyAnime…',
                   style: TextStyle(color: AppColors.muted),
                 ),
               )
@@ -380,7 +402,7 @@ class _DubbingDialogState extends ConsumerState<_DubbingDialog> {
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
                   _error == null
-                      ? 'На YummyAnime серий пока нет.'
+                      ? 'На YummyAnime серий пока нет'
                       : 'YummyAnime не ответил: $_error',
                   style: const TextStyle(color: AppColors.muted),
                 ),
@@ -430,10 +452,10 @@ class _Option extends StatelessWidget {
             const SizedBox(width: 12),
             Text(label),
             const SizedBox(width: 12),
-            if (detail != null)
+            if (detail case final detail? when detail.isNotEmpty)
               Expanded(
                 child: Text(
-                  detail!,
+                  detail,
                   textAlign: TextAlign.right,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: AppColors.muted),

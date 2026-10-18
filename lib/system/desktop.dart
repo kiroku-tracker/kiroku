@@ -79,16 +79,24 @@ class DesktopController with TrayListener, WindowListener {
     });
   }
 
-  /// Заменяет маленькие постеры прежних версий на крупные; при ошибке
-  /// попытка будет при следующем запуске.
+  /// Заменяет маленькие постеры прежних версий на крупные и догружает
+  /// жанры тайтлов библиотеки; при ошибке попытка будет при следующем
+  /// запуске.
   Future<void> _upgradePosters() async {
     try {
       final library = _ref.read(libraryRepositoryProvider);
-      final ids = await library.smallPosterIds();
-      if (ids.isEmpty) return;
       final shikimori = _ref.read(shikimoriClientProvider);
-      for (final info in await shikimori.getAnimes(ids)) {
-        await library.saveAnime(info);
+      final ids = await library.smallPosterIds();
+      if (ids.isNotEmpty) {
+        for (final info in await shikimori.getAnimes(ids)) {
+          await library.saveAnime(info);
+        }
+      }
+      final bare = await library.missingDetailsIds();
+      if (bare.isNotEmpty) {
+        for (final info in await shikimori.getAnimes(bare, withDetails: true)) {
+          await library.saveAnime(info);
+        }
       }
     } on Object {
       // Ошибка пропускается.

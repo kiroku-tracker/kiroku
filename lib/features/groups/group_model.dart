@@ -32,6 +32,10 @@ class GroupView {
   int get completedCount =>
       items.where((item) => item.status == WatchStatus.completed).length;
 
+  /// Сколько тайтлов уже вышло.
+  int get releasedCount =>
+      items.where((item) => !item.anime.release.isAnnounced).length;
+
   double? get averageScore => averageScoreOf(items);
 
   List<String?> get coverUrls => [

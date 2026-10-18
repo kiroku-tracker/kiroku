@@ -33,6 +33,7 @@ LibraryItem _item(
       updatedAt: DateTime(2026, 1, updatedDay),
       muted: false,
       alertsOn: false,
+      favorite: false,
     ),
     anime: Anime(
       id: id,

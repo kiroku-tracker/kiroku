@@ -29,36 +29,80 @@ AnimeInfo _part(int id, String status) => AnimeInfo(
   ],
 );
 
-LibraryEntry _entry({
-  String status = 'watching',
-  bool muted = false,
-  bool alertsOn = false,
-}) => LibraryEntry(
+LibraryEntry _entry({String status = 'watching', String? mode}) => LibraryEntry(
   id: 'e',
   animeId: 1,
   status: status,
   note: '',
   addedAt: DateTime(2026),
   updatedAt: DateTime(2026),
-  muted: muted,
-  alertsOn: alertsOn,
+  muted: false,
+  alertsOn: false,
+  alertMode: mode,
+  favorite: false,
 );
 
 void main() {
   group('правила уведомлений', () {
     const prefs = AppPrefs();
-    const off = AppPrefs(notifyEpisodes: false, notifyFranchises: false);
+    const off = AppPrefs(
+      alertPlanned: EpisodeAlertMode.off,
+      notifyFranchises: false,
+    );
 
     test('серии тайтла', () {
-      expect(episodeAlerts(_entry(), prefs), isTrue);
-      expect(episodeAlerts(_entry(status: 'completed'), prefs), isFalse);
-      expect(episodeAlerts(_entry(muted: true), prefs), isFalse);
-      expect(episodeAlerts(_entry(), off), isFalse);
-      expect(episodeAlerts(_entry(alertsOn: true), off), isTrue);
+      expect(alertModeOf(_entry(), prefs), EpisodeAlertMode.episodes);
       expect(
-        episodeAlerts(_entry(status: 'completed', alertsOn: true), prefs),
-        isTrue,
+        alertModeOf(_entry(status: 'completed'), prefs),
+        EpisodeAlertMode.off,
       );
+      expect(alertModeOf(_entry(mode: 'off'), prefs), EpisodeAlertMode.off);
+      expect(alertModeOf(_entry(), off), EpisodeAlertMode.episodes);
+      expect(alertModeOf(_entry(status: 'planned'), off), EpisodeAlertMode.off);
+      expect(
+        alertModeOf(_entry(mode: 'premiere'), off),
+        EpisodeAlertMode.premiere,
+      );
+      expect(
+        alertModeOf(
+          _entry(status: 'planned'),
+          const AppPrefs(alertPlanned: EpisodeAlertMode.finished),
+        ),
+        EpisodeAlertMode.finished,
+      );
+    });
+
+    test('события по выбору уведомлений', () {
+      const first = NewEpisodes(
+        animeId: 1,
+        title: 'Т',
+        from: 1,
+        to: 1,
+        premiere: true,
+      );
+      const middle = NewEpisodes(animeId: 1, title: 'Т', from: 5, to: 5);
+      const last = NewEpisodes(
+        animeId: 1,
+        title: 'Т',
+        from: 12,
+        to: 12,
+        finished: true,
+      );
+      const site = EpisodesOnSite(
+        animeId: 1,
+        title: 'Т',
+        from: 12,
+        to: 12,
+        complete: true,
+      );
+      const events = [first, middle, last, site];
+      expect(eventsForMode(events, EpisodeAlertMode.off), isEmpty);
+      expect(eventsForMode(events, EpisodeAlertMode.episodes), events);
+      expect(eventsForMode(events, EpisodeAlertMode.premiere), [first]);
+      final finished = eventsForMode(events, EpisodeAlertMode.finished);
+      expect(finished, hasLength(2));
+      expect((finished.first as SeasonFinished).episodes, 12);
+      expect(finished.last, site);
     });
 
     test('флаги', () {
@@ -174,6 +218,15 @@ void main() {
         ])).single.animeId,
         3,
       );
+    });
+
+    test('одновременная загрузка франшизы сообщает один раз', () async {
+      await save([_part(1, 'released'), _part(2, 'anons')]);
+      final results = await Future.wait([
+        save([_part(1, 'released'), _part(2, 'ongoing')]),
+        save([_part(1, 'released'), _part(2, 'ongoing')]),
+      ]);
+      expect(results.expand((events) => events), hasLength(1));
     });
 
     test('начало показа выключено в настройках', () async {

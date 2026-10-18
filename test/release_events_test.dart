@@ -70,11 +70,14 @@ void main() {
   test('конец сезона', () {
     final event =
         releaseEvents(
-              _before(aired: 12),
-              _after(status: 'released', aired: 0),
+              _before(episodes: 0, aired: 12),
+              _after(status: 'released', aired: 12),
             ).single
             as SeasonFinished;
-    expect(notificationText(event).body, '«Тайтл»: вышли все 12 серий');
+    expect(notificationText(event), (
+      title: 'Вышли все серии',
+      body: '«Тайтл» · 12 серий',
+    ));
   });
 
   test('перенос серии', () {

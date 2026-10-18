@@ -3,34 +3,38 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/labels.dart';
-import '../../core/theme/app_colors.dart';
+import '../../core/widgets/card_marks.dart';
 import '../../core/widgets/fresh_badge.dart';
 import '../../core/widgets/poster_card.dart';
 import '../../data/database/app_database.dart';
 import '../../data/database/franchise_rules.dart';
 import '../../data/database/watch_status.dart';
+import '../../data/database/user_groups_repository.dart';
 import '../../data/providers.dart';
 import '../library/library_filter.dart';
 import '../watch/watch_next_button.dart';
+import '../groups/group_actions.dart';
+import '../title/views_menu.dart';
 import 'franchise_screen.dart';
 
 class FranchiseCard extends ConsumerWidget {
   const FranchiseCard({
     super.key,
     required this.unit,
-    required this.tab,
     required this.backLabel,
+    this.group,
   });
 
   final FranchiseUnit unit;
 
-  final WatchStatus? tab;
+  /// Открытая в библиотеке группа: в меню есть «Убрать из группы».
+  final UserGroup? group;
+
   final String backLabel;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final total = unit.items.length;
-    final tab = this.tab;
     final queue = ref.watch(activeQueuesProvider).value?[unit.key];
     final next = franchiseNextPart(unit, preferred: queue?.active?.animeId);
     final fresh = unit.items
@@ -41,19 +45,39 @@ class FranchiseCard extends ConsumerWidget {
         )
         .fold<int>(0, (sum, item) => sum + unwatchedAired(item));
     final average = unit.averageScore;
+    final favorite =
+        ref.watch(franchisesProvider).value?[unit.key]?.favorite ?? false;
+    final views = viewCount(
+      viewParts(unit.items, ref.watch(viewsProvider).value ?? const {}),
+    );
 
     return PosterCard(
       posterUrl: unit.cover.anime.posterUrl,
-      posterBadge: FranchiseBadge(parts: total),
+      posterBadge: Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        children: [
+          FranchiseBadge(parts: total),
+          if (views > 1) ViewsBadge(count: views),
+        ],
+      ),
       posterBadgeEnd: fresh > 0 ? FreshBadge(count: fresh) : null,
       title: unit.name,
-      subtitle: tab == null
-          ? partsLabel(total)
-          : '${tab.label}: ${unit.countOf(tab)} из $total',
+      subtitle: total > unit.releasedCount
+          ? '${partsLabel(total)}, ещё не вышло: '
+                '${total - unit.releasedCount}'
+          : partsLabel(total),
       meta: Text.rich(
         TextSpan(
           children: [
-            TextSpan(text: 'Просмотрено ${unit.completedCount} из $total'),
+            TextSpan(
+              text: unit.all == null
+                  ? 'Просмотрено ${unit.completedCount} из '
+                        '${unit.releasedCount}'
+                  : unit.availableEpisodes == 0
+                  ? 'Ещё не вышло'
+                  : '${unit.watchedEpisodes} из ${unit.availableEpisodes} эп.',
+            ),
             if (average != null) ...[
               const TextSpan(text: '  ·  '),
               const WidgetSpan(
@@ -69,22 +93,36 @@ class FranchiseCard extends ConsumerWidget {
           ],
         ),
       ),
-      extra: ProgressBar(value: unit.completedCount / total),
+      extra: ProgressBar(value: unit.progress),
       onTap: () => openFranchise(context, key: unit.key, backLabel: backLabel),
-      menu: next == null
+      menu: next == null && group == null
           ? null
-          : () => titleCardMenu(
-              ref,
-              next,
-              markSuffix: ' · часть ${unit.items.indexOf(next) + 1}',
-            ),
+          : () => [
+              if (next != null)
+                ...titleCardMenu(
+                  ref,
+                  next,
+                  markSuffix:
+                      ' · часть ${(unit.all ?? unit.items).indexOf(next) + 1}',
+                ),
+              if (group case final group?)
+                removeFromGroupItem(
+                  ref,
+                  group: group,
+                  title: unit.name,
+                  addKey: franchiseMemberKey(unit.key),
+                  keys: {
+                    franchiseMemberKey(unit.key),
+                    for (final item in unit.items) 'a:${item.anime.id}',
+                  },
+                ),
+            ],
+      favorite: favorite,
+      onFavorite: () => ref
+          .read(franchiseRepositoryProvider)
+          .setFavorite(unit.key, !favorite),
       action: next == null
-          ? OutlinedButton.icon(
-              onPressed: () =>
-                  openFranchise(context, key: unit.key, backLabel: backLabel),
-              icon: const Icon(LucideIcons.listOrdered),
-              label: const Text('Порядок просмотра'),
-            )
+          ? CardFacts(years: _years(unit), genres: _genres(unit))
           : Tooltip(
               message: next.anime.title,
               child: WatchNextButton(
@@ -92,6 +130,10 @@ class FranchiseCard extends ConsumerWidget {
                 status: next.status,
                 next: next.progress.nextEpisode,
                 watched: next.progress.watched,
+                whenWatched: CardFacts(
+                  years: _years(unit),
+                  genres: _genres(unit),
+                ),
               ),
             ),
     );
@@ -116,29 +158,30 @@ class FranchiseBadge extends StatelessWidget {
   final int parts;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(6, 3, 8, 3),
-      decoration: BoxDecoration(
-        color: const Color(0xE6131217),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFF46424F)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(LucideIcons.layers, size: 12, color: AppColors.text),
-          const SizedBox(width: 5),
-          Text(
-            'Франшиза · $parts',
-            style: const TextStyle(
-              color: AppColors.text,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
+  Widget build(BuildContext context) => Tooltip(
+    message: 'Частей во франшизе: $parts',
+    child: PosterPill(icon: LucideIcons.layers, text: '$parts'),
+  );
+}
+
+/// Годы выхода частей: «2016» или «2016–2023».
+String? _years(FranchiseUnit unit) {
+  final years = [for (final item in unit.items) ?item.anime.year]..sort();
+  if (years.isEmpty) return null;
+  return years.first == years.last
+      ? '${years.first}'
+      : '${years.first}–${years.last}';
+}
+
+/// Самые частые жанры частей.
+List<String> _genres(FranchiseUnit unit) {
+  final counts = <String, int>{};
+  for (final item in unit.items) {
+    for (final genre in item.anime.genreList) {
+      counts[genre] = (counts[genre] ?? 0) + 1;
+    }
   }
+  return (counts.entries.toList()..sort((a, b) => b.value - a.value))
+      .map((entry) => entry.key)
+      .toList();
 }

@@ -45,6 +45,7 @@ LibraryItem _item(
     franchiseOverride: override,
     muted: false,
     alertsOn: false,
+    favorite: false,
   ),
   anime: anime,
 );
@@ -151,13 +152,35 @@ void main() {
             groupFranchises: true,
             franchises: const {},
           );
-      expect(units(WatchStatus.watching).single, isA<FranchiseUnit>());
+      final watching = units(WatchStatus.watching).single as TitleUnit;
+      expect(watching.item.anime.id, 2);
+      expect(watching.franchiseName, 'Сезон 1');
       expect(units(WatchStatus.completed).single, isA<FranchiseUnit>());
       expect(units(WatchStatus.planned).single, isA<TitleUnit>());
       expect(units(null).length, 2);
       final found = units(null, query: 'сезон 2').single as TitleUnit;
       expect(found.item.anime.id, 2);
       expect(found.franchiseName, 'Сезон 1');
+    });
+
+    test('во вкладке статуса только части с этим статусом', () {
+      final s3 = _anime(4, 'Сезон 3');
+      final units = libraryUnits(
+        [
+          _item(s1, status: WatchStatus.completed),
+          _item(s2, status: WatchStatus.planned),
+          _item(s3, status: WatchStatus.planned),
+        ],
+        status: WatchStatus.planned,
+        query: '',
+        kind: KindFilter.all,
+        sort: LibrarySort.title,
+        groupFranchises: true,
+        franchises: const {},
+      );
+      final franchise = units.single as FranchiseUnit;
+      expect({for (final item in franchise.items) item.anime.id}, {2, 4});
+      expect(franchise.all, hasLength(3));
     });
   });
 

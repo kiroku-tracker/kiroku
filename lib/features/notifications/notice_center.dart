@@ -331,31 +331,33 @@ class _NoticesPanelState extends ConsumerState<_NoticesPanel> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SettingRow(
-                  title: 'Новые серии',
-                  text: 'Для «Смотрю» и «Хочу посмотреть»',
-                  value: prefs.notifyEpisodes,
-                  onChanged: (value) =>
-                      change((prefs) => prefs.copyWith(notifyEpisodes: value)),
-                ),
+                const SettingSection('Новые серии'),
                 ChoiceRow(
-                  title: 'Когда сообщать о серии',
-                  text: 'Для тайтлов, у которых озвучка не известна',
-                  enabled: prefs.notifyEpisodes,
-                  sub: true,
-                  control: SelectButton<EpisodeAlert>(
-                    icon: LucideIcons.bellRing,
-                    tooltip: 'Когда сообщать о серии',
-                    value: prefs.episodeAlert,
-                    options: EpisodeAlert.values,
-                    labelOf: (alert) => alert.label,
-                    onChanged: (alert) =>
-                        change((prefs) => prefs.copyWith(episodeAlert: alert)),
+                  title: '«Хочу посмотреть»',
+                  control: _modeSelect(
+                    prefs.alertPlanned,
+                    (mode) =>
+                        change((prefs) => prefs.copyWith(alertPlanned: mode)),
                   ),
                 ),
                 SettingRow(
-                  title: 'Новые сезоны',
-                  text: 'Новые части франшиз из библиотеки',
+                  title: 'Ждать перевод',
+                  text: prefs.episodeAlert == EpisodeAlert.site
+                      ? 'Уведомление, когда серия выйдет на YummyAnime'
+                      : 'Уведомление сразу после показа в Японии',
+                  value: prefs.episodeAlert == EpisodeAlert.site,
+                  onChanged: (value) => change(
+                    (prefs) => prefs.copyWith(
+                      episodeAlert: value
+                          ? EpisodeAlert.site
+                          : EpisodeAlert.air,
+                    ),
+                  ),
+                ),
+                const SettingSection('Франшизы'),
+                SettingRow(
+                  title: 'Новые части',
+                  text: 'Части, которых нет в библиотеке',
                   value: prefs.notifyFranchises,
                   onChanged: (value) => change(
                     (prefs) => prefs.copyWith(notifyFranchises: value),
@@ -363,7 +365,7 @@ class _NoticesPanelState extends ConsumerState<_NoticesPanel> {
                 ),
                 SettingRow(
                   title: 'Анонс',
-                  text: 'Новая часть появилась на Shikimori',
+                  text: 'Объявлена на Shikimori',
                   value: prefs.notifySeasonAnnounce,
                   enabled: prefs.notifyFranchises,
                   sub: true,
@@ -373,7 +375,7 @@ class _NoticesPanelState extends ConsumerState<_NoticesPanel> {
                 ),
                 SettingRow(
                   title: 'Начало показа',
-                  text: 'Вышла первая серия новой части',
+                  text: 'Вышла 1-я серия',
                   value: prefs.notifySeasonStart,
                   enabled: prefs.notifyFranchises,
                   sub: true,
@@ -382,8 +384,7 @@ class _NoticesPanelState extends ConsumerState<_NoticesPanel> {
                   ),
                 ),
                 const SettingNote(
-                  'Тайтл или франшизу можно настроить отдельно колокольчиком '
-                  'на их странице',
+                  'Отдельно для тайтла или франшизы: колокольчик на их странице',
                 ),
               ],
             ),
@@ -393,6 +394,21 @@ class _NoticesPanelState extends ConsumerState<_NoticesPanel> {
       ],
     );
   }
+
+  /// Выбор уведомлений о сериях.
+  Widget _modeSelect(
+    EpisodeAlertMode value,
+    ValueChanged<EpisodeAlertMode> onChanged,
+  ) => SelectButton<EpisodeAlertMode>(
+    icon: value == EpisodeAlertMode.off
+        ? LucideIcons.bellOff
+        : LucideIcons.bell,
+    tooltip: 'Уведомления о сериях',
+    value: value,
+    options: EpisodeAlertMode.values,
+    labelOf: (mode) => mode.label,
+    onChanged: onChanged,
+  );
 
   Widget _exceptionsView() {
     final exceptions = _Exceptions.of(ref);
@@ -417,30 +433,19 @@ class _NoticesPanelState extends ConsumerState<_NoticesPanel> {
               shrinkWrap: true,
               padding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
               children: [
-                for (final group in exceptions.titles) ...[
-                  _GroupHeader('Тайтлы · ${group.label}'),
-                  for (final item in group.items)
+                if (exceptions.titles.isNotEmpty) ...[
+                  const _GroupHeader('Тайтлы'),
+                  for (final (:item, :mode) in exceptions.titles)
                     _ExceptionRow(
                       name: item.anime.title,
-                      on: group.on,
+                      detail: mode.label,
+                      on: mode != EpisodeAlertMode.off,
+                      action: 'Сбросить',
                       onOpen: () {
                         _close();
                         widget.openTitle(item.anime.id);
                       },
-                      onToggle: () {
-                        final flags = alertFlags(
-                          on: !group.on,
-                          byDefault: episodeAlertsByDefault(
-                            item.entry,
-                            exceptions.prefs,
-                          ),
-                        );
-                        library.setAlerts(
-                          item.anime.id,
-                          muted: flags.muted,
-                          alertsOn: flags.alertsOn,
-                        );
-                      },
+                      onAction: () => library.setAlertMode(item.anime.id, null),
                     ),
                 ],
                 for (final group in exceptions.franchises) ...[
@@ -449,11 +454,12 @@ class _NoticesPanelState extends ConsumerState<_NoticesPanel> {
                     _ExceptionRow(
                       name: franchise.name,
                       on: group.on,
+                      action: group.on ? 'Выключить' : 'Включить',
                       onOpen: () {
                         _close();
                         widget.openFranchise(franchise.key);
                       },
-                      onToggle: () {
+                      onAction: () {
                         final flags = alertFlags(
                           on: !group.on,
                           byDefault: exceptions.prefs.notifyFranchises,
@@ -488,24 +494,11 @@ class _Exceptions {
     final items = ref.watch(libraryItemsProvider).value ?? const [];
     final rows = ref.watch(franchisesProvider).value ?? const {};
 
-    final titles = <_Group<LibraryItem>>[
-      if (prefs.notifyEpisodes)
-        _Group(
-          label: 'отключены',
-          on: false,
-          items: [
-            for (final item in items)
-              if (item.entry.muted) item,
-          ],
-        ),
-      _Group(
-        label: 'включены отдельно',
-        on: true,
-        items: [
-          for (final item in items)
-            if (item.entry.alertsOn && !item.entry.muted) item,
-        ],
-      ),
+    final titles = [
+      for (final item in items)
+        if (ownAlertMode(item.entry) case final mode?
+            when mode != defaultAlertMode(item.entry, prefs))
+          (item: item, mode: mode),
     ];
 
     final franchises = <({String key, String name})>[];
@@ -524,10 +517,7 @@ class _Exceptions {
 
     return _Exceptions(
       prefs: prefs,
-      titles: [
-        for (final group in titles)
-          if (group.items.isNotEmpty) group,
-      ],
+      titles: titles,
       franchises: [
         if (franchises.isNotEmpty)
           _Group(
@@ -540,21 +530,20 @@ class _Exceptions {
   }
 
   final AppPrefs prefs;
-  final List<_Group<LibraryItem>> titles;
+
+  /// Тайтлы с уведомлениями о сериях не по общей настройке.
+  final List<({LibraryItem item, EpisodeAlertMode mode})> titles;
   final List<_Group<({String key, String name})>> franchises;
 
   bool get isEmpty => titles.isEmpty && franchises.isEmpty;
 
   /// Строка-ссылка под списком уведомлений.
   String get summary {
-    final parts = <String>[];
-    for (final group in titles) {
-      final count = group.items.length;
-      parts.add(
-        '${_capital(group.label)}: $count '
-        '${plural(count, 'тайтл', 'тайтла', 'тайтлов')}',
-      );
-    }
+    final parts = <String>[
+      if (titles.isNotEmpty)
+        'Настроены отдельно: ${titles.length} '
+            '${plural(titles.length, 'тайтл', 'тайтла', 'тайтлов')}',
+    ];
     for (final group in franchises) {
       final count = group.items.length;
       parts.add(
@@ -763,14 +752,18 @@ class _ExceptionRow extends StatelessWidget {
   const _ExceptionRow({
     required this.name,
     required this.on,
+    required this.action,
     required this.onOpen,
-    required this.onToggle,
+    required this.onAction,
+    this.detail,
   });
 
   final String name;
+  final String? detail;
   final bool on;
+  final String action;
   final VoidCallback onOpen;
-  final VoidCallback onToggle;
+  final VoidCallback onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -789,12 +782,22 @@ class _ExceptionRow extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  if (detail case final detail?)
+                    Text(
+                      detail,
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 13,
+                      ),
+                    ),
+                ],
+              ),
             ),
-            TextButton(
-              onPressed: onToggle,
-              child: Text(on ? 'Выключить' : 'Включить'),
-            ),
+            TextButton(onPressed: onAction, child: Text(action)),
           ],
         ),
       ),

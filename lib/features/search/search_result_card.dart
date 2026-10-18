@@ -18,6 +18,8 @@ class SearchResultCard extends ConsumerWidget {
     super.key,
     required this.anime,
     required this.status,
+    this.reason,
+    this.backLabel = 'Назад к поиску',
   });
 
   static final bodyHeight = PosterCard.bodyHeight();
@@ -25,6 +27,10 @@ class SearchResultCard extends ConsumerWidget {
   final AnimeInfo anime;
 
   final WatchStatus? status;
+
+  /// Почему тайтл показан; вместо оригинального названия.
+  final String? reason;
+  final String backLabel;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -48,7 +54,7 @@ class SearchResultCard extends ConsumerWidget {
       posterUrl: anime.posterUrl,
       posterBadge: ReleaseBadge(release: release),
       title: anime.title,
-      subtitle: anime.russian.isNotEmpty ? anime.name : '',
+      subtitle: reason ?? (anime.russian.isNotEmpty ? anime.name : ''),
       meta: Row(
         children: [
           Flexible(
@@ -65,7 +71,7 @@ class SearchResultCard extends ConsumerWidget {
       onTap: () async {
         await ref.read(libraryRepositoryProvider).saveAnime(anime);
         if (context.mounted) {
-          openTitle(context, animeId: anime.id, backLabel: 'Назад к поиску');
+          openTitle(context, animeId: anime.id, backLabel: backLabel);
         }
       },
       action: status == null

@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 import '../shikimori/anime_info.dart';
 import '../shikimori/user_rate.dart';
 import 'app_database.dart';
+import 'settings_repository.dart';
 import 'status_action.dart';
 import 'watch_status.dart';
 
@@ -236,6 +237,21 @@ class LibraryRepository {
     ];
   }
 
+  /// Тайтлы библиотеки, для которых ещё не загружены жанры и описание.
+  Future<List<int>> missingDetailsIds() async {
+    final query =
+        _db.select(_db.libraryEntries).join([
+          innerJoin(
+            _db.animes,
+            _db.animes.id.equalsExp(_db.libraryEntries.animeId),
+          ),
+        ])..where(
+          _db.libraryEntries.deletedAt.isNull() &
+              _db.animes.detailsLoadedAt.isNull(),
+        );
+    return [for (final row in await query.get()) row.readTable(_db.animes).id];
+  }
+
   /// Тайтлы с маленьким постером, сохранённым прежними версиями.
   Future<List<int>> smallPosterIds() async => [
     for (final anime in await (_db.select(
@@ -249,26 +265,6 @@ class LibraryRepository {
       _db.animes,
     )..where((anime) => anime.id.isIn(ids))).get())
       anime.id: anime,
-  };
-
-  /// Тайтлы, о новых сериях которых сообщать: включённые отдельно и, если
-  /// уведомления включены, «Смотрю» и «Хочу посмотреть».
-  Future<Set<int>> trackedIds({required bool byDefault}) async => {
-    for (final entry
-        in await (_db.select(_db.libraryEntries)..where(
-              (entry) =>
-                  entry.deletedAt.isNull() &
-                  entry.muted.equals(false) &
-                  (entry.alertsOn.equals(true) |
-                      (byDefault
-                          ? entry.status.isIn([
-                              WatchStatus.watching.name,
-                              WatchStatus.planned.name,
-                            ])
-                          : const Constant(false))),
-            ))
-            .get())
-      entry.animeId,
   };
 
   Stream<Anime?> watchAnime(int animeId) => (_db.select(
@@ -340,7 +336,7 @@ class LibraryRepository {
                 _db.watchCycles.deletedAt.isNull() &
                 _db.libraryEntries.deletedAt.isNull() &
                 (_db.watchEvents.source.isNull() |
-                    _db.watchEvents.source.equals('import').not()),
+                    _db.watchEvents.source.isIn(['import', 'rewatch']).not()),
           )
           ..orderBy([
             OrderingTerm.desc(at),
@@ -694,20 +690,122 @@ class LibraryRepository {
         ),
       );
 
-  /// Включает или выключает уведомления тайтла.
-  /// Включает или выключает уведомления тайтла отдельно от общей
-  /// настройки.
-  Future<void> setAlerts(
-    int animeId, {
-    required bool muted,
-    required bool alertsOn,
-  }) =>
+  /// Сколько раз тайтлы просмотрены целиком и сколько из этих просмотров
+  /// без дат (их можно убрать).
+  Stream<Map<int, ({int views, int removable})>> watchViews() {
+    final query =
+        _db.select(_db.watchCycles).join([
+          innerJoin(
+            _db.libraryEntries,
+            _db.libraryEntries.id.equalsExp(_db.watchCycles.entryId),
+          ),
+        ])..where(
+          _db.watchCycles.deletedAt.isNull() &
+              _db.libraryEntries.deletedAt.isNull() &
+              _db.watchCycles.state.equals('completed'),
+        );
+    return query.watch().map((rows) {
+      final completed = <int, int>{};
+      final dateless = <int, int>{};
+      for (final row in rows) {
+        final animeId = row.readTable(_db.libraryEntries).animeId;
+        completed[animeId] = (completed[animeId] ?? 0) + 1;
+        if (row.readTable(_db.watchCycles).startedAt == null) {
+          dateless[animeId] = (dateless[animeId] ?? 0) + 1;
+        }
+      }
+      return {
+        for (final MapEntry(key: id, value: count) in completed.entries)
+          id: (views: count, removable: min(dateless[id] ?? 0, count - 1)),
+      };
+    });
+  }
+
+  /// Добавляет полный просмотр без дат раньше текущего.
+  Future<LibraryChange> addView(int animeId) {
+    return _change(animeId, (entry, anime, now) async {
+      final cycles = await (_db.select(
+        _db.watchCycles,
+      )..where((c) => c.entryId.equals(entry.id) & c.deletedAt.isNull())).get();
+      final lowest = cycles.isEmpty
+          ? 1
+          : cycles.map((cycle) => cycle.number).reduce(min);
+      final cycleId = newId();
+      await _db
+          .into(_db.watchCycles)
+          .insert(
+            WatchCyclesCompanion.insert(
+              id: cycleId,
+              entryId: entry.id,
+              number: lowest - 1,
+              state: 'completed',
+              updatedAt: now,
+            ),
+          );
+      final episodes = anime.release.availableEpisodes;
+      await _db.batch(
+        (batch) => batch.insertAll(_db.watchEvents, [
+          for (var episode = 1; episode <= episodes; episode++)
+            WatchEventsCompanion.insert(
+              id: newId(),
+              cycleId: cycleId,
+              episode: episode,
+              markedAt: now,
+              bulk: const Value(true),
+              source: const Value('rewatch'),
+              updatedAt: now,
+            ),
+        ]),
+      );
+      return (marked: 0, finished: false);
+    });
+  }
+
+  /// Убирает добавленный просмотр без дат; один полный просмотр остаётся.
+  Future<LibraryChange> removeView(int animeId) {
+    return _change(animeId, (entry, anime, now) async {
+      final completed =
+          await (_db.select(_db.watchCycles)
+                ..where(
+                  (c) =>
+                      c.entryId.equals(entry.id) &
+                      c.deletedAt.isNull() &
+                      c.state.equals('completed'),
+                )
+                ..orderBy([(c) => OrderingTerm.asc(c.number)]))
+              .get();
+      final target = completed.length < 2
+          ? null
+          : completed.where((cycle) => cycle.startedAt == null).firstOrNull;
+      if (target != null) {
+        await (_db.update(
+          _db.watchEvents,
+        )..where((event) => event.cycleId.equals(target.id))).write(
+          WatchEventsCompanion(deletedAt: Value(now), updatedAt: Value(now)),
+        );
+        await (_db.update(
+          _db.watchCycles,
+        )..where((cycle) => cycle.id.equals(target.id))).write(
+          WatchCyclesCompanion(deletedAt: Value(now), updatedAt: Value(now)),
+        );
+      }
+      return (marked: 0, finished: false);
+    });
+  }
+
+  /// Добавляет тайтл в избранное или убирает из него.
+  Future<void> setFavorite(int animeId, bool favorite) =>
+      (_db.update(_db.libraryEntries)
+            ..where((entry) => entry.animeId.equals(animeId)))
+          .write(LibraryEntriesCompanion(favorite: Value(favorite)));
+
+  /// Задаёт уведомления о сериях тайтла; null: по общей настройке.
+  Future<void> setAlertMode(int animeId, EpisodeAlertMode? mode) =>
       (_db.update(
         _db.libraryEntries,
       )..where((entry) => entry.animeId.equals(animeId))).write(
         LibraryEntriesCompanion(
-          muted: Value(muted),
-          alertsOn: Value(alertsOn),
+          alertMode: Value(mode?.name),
           updatedAt: Value(DateTime.now()),
         ),
       );

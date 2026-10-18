@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/labels.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/status_menu.dart';
+import '../../data/providers.dart';
 import '../../data/database/app_database.dart';
 import '../../data/database/library_repository.dart';
 import '../../data/database/status_action.dart';
@@ -94,6 +95,7 @@ class WatchNextButton extends ConsumerStatefulWidget {
     required this.next,
     required this.watched,
     this.height = 40,
+    this.whenWatched,
   });
 
   final Anime anime;
@@ -101,6 +103,9 @@ class WatchNextButton extends ConsumerStatefulWidget {
   final int next;
   final int watched;
   final double height;
+
+  /// Что показать вместо кнопки, если тайтл просмотрен целиком.
+  final Widget? whenWatched;
 
   @override
   ConsumerState<WatchNextButton> createState() => _WatchNextButtonState();
@@ -133,6 +138,8 @@ class _WatchNextButtonState extends ConsumerState<WatchNextButton> {
       ),
     );
     final label = Text(next.label, overflow: TextOverflow.ellipsis);
+    final whenWatched = widget.whenWatched;
+    if (next.restart && whenWatched != null) return whenWatched;
     final Widget button;
     if (next.episode == null) {
       button = OutlinedButton.icon(
@@ -199,5 +206,14 @@ List<Widget> titleCardMenu(
       color: AppColors.menuItemText,
       onPressed: () => watchOnSite(ref, anime, inApp: false),
     ),
+    if (markSuffix.isEmpty)
+      AppMenuItem(
+        label: item.entry.favorite ? 'Убрать из избранного' : 'В избранное',
+        icon: LucideIcons.heart,
+        color: AppColors.menuItemText,
+        onPressed: () => ref
+            .read(libraryRepositoryProvider)
+            .setFavorite(anime.id, !item.entry.favorite),
+      ),
   ];
 }

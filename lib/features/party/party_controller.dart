@@ -50,6 +50,7 @@ class PartyState {
     this.playing = false,
     this.position = 0,
     this.duration = 0,
+    this.rate = 1,
     this.reconnecting = false,
   });
 
@@ -74,6 +75,9 @@ class PartyState {
   final double position;
   final double duration;
 
+  /// Общая скорость комнаты.
+  final double rate;
+
   /// Связь с комнатой потеряна, идёт переподключение.
   final bool reconnecting;
 
@@ -91,6 +95,7 @@ class PartyState {
     bool? playing,
     double? position,
     double? duration,
+    double? rate,
     bool? reconnecting,
   }) => PartyState(
     role: role,
@@ -103,6 +108,7 @@ class PartyState {
     playing: playing ?? this.playing,
     position: position ?? this.position,
     duration: duration ?? this.duration,
+    rate: rate ?? this.rate,
     reconnecting: reconnecting ?? this.reconnecting,
   );
 }
@@ -318,8 +324,9 @@ class PartyNotifier extends Notifier<PartyState> {
       't': 'state',
       'watching': watching,
       'episode': session?.site.episode,
-      'position': video?.time ?? 0,
+      'position': session?.videoTime ?? 0,
       'duration': video?.duration ?? 0,
+      'rate': video?.rate ?? 1,
       'playing': video != null && !video.paused,
       'ready': video != null && video.ready,
     });
@@ -413,7 +420,12 @@ class PartyNotifier extends Notifier<PartyState> {
     _followed = session;
     unawaited(_events?.cancel());
     _events = session?.events.listen(
-      (event) => _send({'t': 'event', 'type': event.type, 'time': event.time}),
+      (event) => _send({
+        't': 'event',
+        'type': event.type,
+        'time': event.time,
+        'rate': event.rate,
+      }),
     );
   }
 
@@ -439,6 +451,9 @@ class PartyNotifier extends Notifier<PartyState> {
       case 'seek':
         final time = (message['time'] as num?)?.toDouble();
         if (time != null) session?.control('seek', position: time);
+      case 'rate':
+        final rate = (message['value'] as num?)?.toDouble();
+        if (rate != null) session?.control('rate', rate: rate);
       case 'denied':
         final text = _deniedText(message['right']);
         if (text != null) {
@@ -472,6 +487,7 @@ class PartyNotifier extends Notifier<PartyState> {
           waiting: waiting,
           clearWaiting: waiting == null,
           playing: message['playing'] == true,
+          rate: (message['rate'] as num?)?.toDouble() ?? 1,
           position: (message['position'] as num?)?.toDouble() ?? 0,
           duration: (message['duration'] as num?)?.toDouble() ?? 0,
         );
@@ -600,6 +616,7 @@ String? _deniedText(Object? right) => switch (right) {
   'pause' => 'нет права ставить паузу',
   'seek' => 'нет права перематывать',
   'episode' => 'нет права выбирать серию',
+  'rate' => 'нет права менять скорость',
   _ => null,
 };
 

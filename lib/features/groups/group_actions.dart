@@ -2,12 +2,59 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../app_section.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/toast.dart';
 import '../../core/widgets/text_prompt.dart';
+import '../../core/widgets/status_menu.dart';
+import '../../data/database/app_database.dart';
 import '../../data/providers.dart';
 
 /// Действия с группами.
+
+/// Группа, которую показывает библиотека; null — вся библиотека.
+class LibraryGroupNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void select(String? groupId) => state = groupId;
+}
+
+final libraryGroupProvider = NotifierProvider<LibraryGroupNotifier, String?>(
+  LibraryGroupNotifier.new,
+);
+
+/// Пункт «Убрать из группы» для тайтла или франшизы.
+Widget removeFromGroupItem(
+  WidgetRef ref, {
+  required UserGroup group,
+  required String title,
+  required String addKey,
+  required Set<String> keys,
+}) => AppMenuItem(
+  label: 'Убрать из группы',
+  icon: LucideIcons.folderMinus,
+  color: AppColors.dangerText,
+  onPressed: () => setGroupMembership(
+    ref,
+    groupId: group.id,
+    groupName: group.name,
+    title: title,
+    addKey: addKey,
+    keys: keys,
+    member: false,
+  ),
+);
+
+/// Открывает группу в библиотеке.
+void openGroup(BuildContext context, String groupId) {
+  final container = ProviderScope.containerOf(context);
+  container.read(libraryGroupProvider.notifier).select(groupId);
+  container.read(appSectionProvider.notifier).open(AppSection.library);
+  sectionNavigatorKeys[AppSection.library]?.currentState?.popUntil(
+    (route) => route.isFirst,
+  );
+}
 
 Future<String?> createGroup(BuildContext context, WidgetRef ref) async {
   final name = await askText(

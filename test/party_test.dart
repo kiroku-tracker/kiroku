@@ -19,6 +19,7 @@ PartyMember _member(
   ..name = 'Участник $id'
   ..position = position
   ..ready = ready
+  ..notReadySince = ready ? null : DateTime(2026)
   ..watching = watching
   ..episode = episode
   ..playing = true;
@@ -96,6 +97,28 @@ void main() {
       plan = partyPlan(playing: true, episode: 3, members: members);
       expect(plan.play, {1: true, 2: true});
       expect(plan.waitingFor, isNull);
+    });
+
+    test('короткая подгрузка никого не останавливает', () {
+      final now = DateTime(2026, 1, 1, 12);
+      final loading = _member(2, ready: false)
+        ..notReadySince = now.subtract(const Duration(milliseconds: 500));
+      final plan = partyPlan(
+        playing: true,
+        episode: 3,
+        members: [_member(1), loading],
+        now: now,
+      );
+      expect(plan.play, {1: true, 2: true});
+      expect(plan.waitingFor, isNull);
+    });
+
+    test('позиция учитывает время после отчёта', () {
+      final now = DateTime(2026, 1, 1, 12);
+      final member = _member(1, position: 10)
+        ..rate = 2
+        ..reportedAt = now.subtract(const Duration(seconds: 1));
+      expect(member.positionAt(now), 12);
     });
 
     test('не смотрящих не ждём', () {
@@ -313,4 +336,38 @@ void main() {
     await second.socket.close();
   });
 
+  test('скорость общая, без права её не поменять', () async {
+    var rights = <PartyRight>{PartyRight.pause};
+    final server = await PartyServer.start(0, rightsOf: (_) => rights);
+    addTearDown(server.close);
+    final host = await _Client.connect(server.port);
+    await host.next('welcome');
+    final guest = await _Client.connect(server.port);
+    await guest.next('welcome');
+    for (final client in [host, guest]) {
+      client.send({
+        't': 'state',
+        'watching': true,
+        'episode': 3,
+        'position': 100,
+        'playing': false,
+        'ready': true,
+        'rate': 1,
+      });
+    }
+
+    guest.send({'t': 'event', 'type': 'rate', 'time': 100, 'rate': 2});
+    expect((await host.next('rate'))['value'], 2);
+
+    rights = {};
+    guest.send({'t': 'event', 'type': 'rate', 'time': 100, 'rate': 1.5});
+    expect((await guest.next('denied'))['right'], 'rate');
+    var room = await host.next('room');
+    while (room['rate'] != 2) {
+      room = await host.next('room');
+    }
+
+    await host.socket.close();
+    await guest.socket.close();
+  });
 }

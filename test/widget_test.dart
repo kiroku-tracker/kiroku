@@ -272,7 +272,7 @@ void main() {
     await settle(tester);
     final toggle = find.descendant(
       of: find.ancestor(
-        of: find.text('Выбор серии у гостей'),
+        of: find.text('Выбирать серию и озвучку'),
         matching: find.byType(SettingRow),
       ),
       matching: find.byType(Switch),

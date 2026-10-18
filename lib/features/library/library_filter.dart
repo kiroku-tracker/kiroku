@@ -105,8 +105,44 @@ int Function(LibraryItem, LibraryItem) _comparator(LibrarySort sort) {
   };
 }
 
-DateTime? _nextAt(Anime anime) =>
-    anime.release.isReleased ? null : anime.nextEpisodeAt;
+/// Пункт «Хочу посмотреть» по выходу серий.
+PlannedFilter plannedFilterOf(Anime anime) {
+  final release = anime.release;
+  if (release.isAnnounced) return PlannedFilter.announced;
+  if (release.isOngoing) return PlannedFilter.airing;
+  return PlannedFilter.available;
+}
+
+/// Число тайтлов «Хочу посмотреть» в каждом пункте.
+Map<PlannedFilter, int> plannedCounts(List<LibraryItem> items) {
+  final counts = <PlannedFilter, int>{};
+  for (final item in items) {
+    if (item.status != WatchStatus.planned) continue;
+    final filter = plannedFilterOf(item.anime);
+    counts[filter] = (counts[filter] ?? 0) + 1;
+    counts[PlannedFilter.all] = (counts[PlannedFilter.all] ?? 0) + 1;
+  }
+  return counts;
+}
+
+/// Дата следующей серии; у анонса без неё дата премьеры.
+DateTime? _nextAt(Anime anime) {
+  final release = anime.release;
+  if (release.isReleased) return null;
+  return anime.nextEpisodeAt ??
+      (release.isAnnounced ? premiereAt(anime.airedOn) : null);
+}
+
+/// Дата премьеры; без месяца или дня берётся конец года или месяца.
+DateTime? premiereAt(String? airedOn) {
+  final parts = (airedOn ?? '').split('-');
+  final year = int.tryParse(parts.first);
+  if (year == null) return null;
+  final month = parts.length > 1 ? int.tryParse(parts[1]) : null;
+  final day = parts.length > 2 ? int.tryParse(parts[2]) : null;
+  if (month == null) return DateTime(year, 12, 31);
+  return DateTime(year, month, day ?? DateTime(year, month + 1, 0).day);
+}
 
 /// Тайтлы и франшизы для библиотеки.
 List<LibraryUnit> libraryUnits(
@@ -117,7 +153,22 @@ List<LibraryUnit> libraryUnits(
   required LibrarySort sort,
   required bool groupFranchises,
   required Map<String, Franchise> franchises,
+  bool favorites = false,
+  PlannedFilter planned = PlannedFilter.all,
 }) {
+  final release = status == WatchStatus.planned ? planned : PlannedFilter.all;
+  bool fits(LibraryItem item) =>
+      release == PlannedFilter.all || plannedFilterOf(item.anime) == release;
+  if (favorites) {
+    return _favoriteUnits(
+      items,
+      query: query,
+      kind: kind,
+      sort: sort,
+      groupFranchises: groupFranchises,
+      franchises: franchises,
+    );
+  }
   final grouped = groupLibrary(items, franchises);
   final searching = query.trim().isNotEmpty || kind != KindFilter.all;
   if (!groupFranchises || searching) {
@@ -133,16 +184,88 @@ List<LibraryUnit> libraryUnits(
         kind: kind,
         sort: sort,
       ))
-        TitleUnit(item, franchiseName: franchiseOf[item.anime.id]),
+        if (fits(item))
+          TitleUnit(item, franchiseName: franchiseOf[item.anime.id]),
     ];
   }
-  final result = [
+  final result = <LibraryUnit>[
     for (final unit in grouped)
-      if (switch (unit) {
-        TitleUnit(:final item) => status == null || item.status == status,
+      if (unit is FranchiseUnit &&
+          status != null &&
+          status != WatchStatus.completed)
+        ?_onlyParts(unit, (item) => item.status == status && fits(item))
+      else if (switch (unit) {
+        TitleUnit(:final item) =>
+          (status == null || item.status == status) && fits(item),
         FranchiseUnit() => status == null || unit.has(status),
       })
         unit,
+  ];
+  result.sort(_unitComparator(sort));
+  return result;
+}
+
+/// Подходящие части франшизы: одна часть показывается тайтлом,
+/// несколько собираются во франшизу без остальных частей.
+LibraryUnit? _onlyParts(FranchiseUnit unit, bool Function(LibraryItem) keep) {
+  final parts = [
+    for (final item in unit.items)
+      if (keep(item)) item,
+  ];
+  if (parts.isEmpty) return null;
+  if (parts.length == 1) {
+    return TitleUnit(parts.single, franchiseName: unit.name);
+  }
+  return FranchiseUnit(
+    key: unit.key,
+    name: unit.name,
+    items: parts,
+    cover: parts.contains(unit.cover) ? unit.cover : parts.first,
+    all: unit.items,
+  );
+}
+
+/// Избранное: отмеченные тайтлы и франшизы целиком.
+List<LibraryUnit> _favoriteUnits(
+  List<LibraryItem> items, {
+  required String query,
+  required KindFilter kind,
+  required LibrarySort sort,
+  required bool groupFranchises,
+  required Map<String, Franchise> franchises,
+}) {
+  final grouped = groupLibrary(items, franchises);
+  final franchiseOf = <int, FranchiseUnit>{
+    for (final unit in grouped.whereType<FranchiseUnit>())
+      for (final item in unit.items) item.anime.id: unit,
+  };
+  bool favoriteFranchise(FranchiseUnit? unit) =>
+      unit != null && (franchises[unit.key]?.favorite ?? false);
+  final searching = query.trim().isNotEmpty || kind != KindFilter.all;
+  if (!groupFranchises || searching) {
+    return [
+      for (final item in filterLibrary(
+        items,
+        status: null,
+        query: query,
+        kind: kind,
+        sort: sort,
+      ))
+        if (item.entry.favorite ||
+            favoriteFranchise(franchiseOf[item.anime.id]))
+          TitleUnit(item, franchiseName: franchiseOf[item.anime.id]?.name),
+    ];
+  }
+  final result = <LibraryUnit>[
+    for (final unit in grouped)
+      ...switch (unit) {
+        FranchiseUnit() when favoriteFranchise(unit) => [unit],
+        FranchiseUnit(:final items, :final name) => [
+          for (final item in items)
+            if (item.entry.favorite) TitleUnit(item, franchiseName: name),
+        ],
+        TitleUnit(:final item) => [if (item.entry.favorite) unit],
+      },
   ];
   result.sort(_unitComparator(sort));
   return result;
@@ -165,7 +288,7 @@ int Function(LibraryUnit, LibraryUnit) _unitComparator(LibrarySort sort) {
   });
   double progress(LibraryUnit unit) => switch (unit) {
     TitleUnit(:final item) => _progressRatio(item),
-    FranchiseUnit() => unit.completedCount / unit.items.length,
+    FranchiseUnit() => unit.progress,
   };
   double score(LibraryUnit unit) => switch (unit) {
     TitleUnit(:final item) => (item.entry.score ?? -1).toDouble(),

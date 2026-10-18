@@ -731,9 +731,9 @@ class _RoomStatus extends StatelessWidget {
         'Ждём: $waiting',
         AppColors.accentText,
       ),
-      PartyState(playing: true) => (
+      PartyState(playing: true, :final rate) => (
         LucideIcons.play,
-        'Идёт просмотр',
+        rate == 1 ? 'Идёт просмотр' : 'Идёт просмотр · ×${formatRate(rate)}',
         AppColors.accentText,
       ),
       _ => (LucideIcons.pause, 'Пауза', AppColors.navIdle),
@@ -1206,4 +1206,12 @@ String _clock(double seconds) {
   return hours > 0
       ? '$hours:${minutes.toString().padLeft(2, '0')}:$rest'
       : '$minutes:$rest';
+}
+
+/// Скорость без лишних нулей: 2, 1,5, 0,75.
+String formatRate(double rate) {
+  final text = rate == rate.roundToDouble()
+      ? rate.toStringAsFixed(0)
+      : rate.toStringAsFixed(2).replaceFirst(RegExp(r'0+$'), '');
+  return text.replaceAll('.', ',');
 }

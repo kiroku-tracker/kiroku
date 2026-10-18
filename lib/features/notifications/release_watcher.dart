@@ -20,6 +20,10 @@ class ReleaseWatcher {
   Timer? _timer;
   Future<List<ReleaseEvent>>? _running;
 
+  /// Франшизы сохраняются по одной: проверка и страница франшизы не
+  /// сообщают об одном сезоне дважды.
+  Future<void> _franchiseQueue = Future.value();
+
   static const interval = Duration(hours: 1);
 
   static const _summaryFrom = 5;
@@ -48,14 +52,13 @@ class ReleaseWatcher {
       final ids = await library.idsToRefresh();
       final fresh = <String>{};
       if (ids.isNotEmpty) {
-        final tracked = await library.trackedIds(
-          byDefault: prefs.notifyEpisodes,
-        );
+        final modes = await _alertModes(prefs);
         final before = await library.animesByIds(ids);
         for (final info in await shikimori.getAnimes(ids)) {
           final old = before[info.id];
-          if (old != null && tracked.contains(info.id)) {
-            events.addAll(releaseEvents(old, info));
+          final mode = modes[info.id];
+          if (old != null && mode != null) {
+            events.addAll(eventsForMode(releaseEvents(old, info), mode));
           }
           final key = info.franchise ?? '';
           if (old != null && (old.franchise ?? '').isEmpty && key.isNotEmpty) {
@@ -85,8 +88,7 @@ class ReleaseWatcher {
         })
           event,
     ];
-    await _deliver(shown);
-    return shown;
+    return _deliver(shown);
   }
 
   /// Загружает франшизу со страницы и сообщает о новых сезонах.
@@ -109,7 +111,7 @@ class ReleaseWatcher {
   ) async {
     final library = _ref.read(libraryRepositoryProvider);
     final site = _ref.read(siteEpisodesRepositoryProvider);
-    final tracked = await library.trackedIds(byDefault: prefs.notifyEpisodes);
+    final modes = await _alertModes(prefs);
     final franchises = await _ref
         .read(franchiseRepositoryProvider)
         .watchFranchises()
@@ -117,7 +119,8 @@ class ReleaseWatcher {
     final events = <ReleaseEvent>[];
     for (final item in await library.watchItems().first) {
       final anime = item.anime;
-      if (!tracked.contains(anime.id)) continue;
+      final mode = modes[anime.id];
+      if (mode == null) continue;
       final dubbing = effectiveDubbing(
         item.entry,
         franchises[franchiseKeyOf(item.entry, anime)],
@@ -134,12 +137,18 @@ class ReleaseWatcher {
       try {
         final result = await site.refresh(anime.id);
         events.addAll(
-          siteEvents(
-            animeId: anime.id,
-            title: anime.title,
-            before: result.before,
-            after: result.after,
-            dubbing: dubbing,
+          eventsForMode(
+            siteEvents(
+              animeId: anime.id,
+              title: anime.title,
+              before: result.before,
+              after: result.after,
+              dubbing: dubbing,
+              total: release.isReleased
+                  ? release.availableEpisodes
+                  : release.episodes,
+            ),
+            mode,
           ),
         );
       } catch (_) {}
@@ -147,14 +156,27 @@ class ReleaseWatcher {
     return events;
   }
 
+  /// Уведомления о сериях тайтлов библиотеки, кроме выключенных.
+  Future<Map<int, EpisodeAlertMode>> _alertModes(AppPrefs prefs) async => {
+    for (final item
+        in await _ref.read(libraryRepositoryProvider).watchItems().first)
+      if (alertModeOf(item.entry, prefs) case final mode
+          when mode != EpisodeAlertMode.off)
+        item.anime.id: mode,
+  };
+
   /// Сохраняет части франшизы и возвращает новости о её сезонах.
   Future<List<ReleaseEvent>> saveFranchise(
     FranchiseParts parts, {
     bool fresh = false,
-  }) async {
-    final repository = _ref.read(franchiseRepositoryProvider);
-    final added = await repository.saveParts(parts, fresh: fresh);
-    return _seasonEvents(parts.key, {for (final part in added) part.id});
+  }) {
+    final run = _franchiseQueue.then((_) async {
+      final repository = _ref.read(franchiseRepositoryProvider);
+      final added = await repository.saveParts(parts, fresh: fresh);
+      return _seasonEvents(parts.key, {for (final part in added) part.id});
+    });
+    _franchiseQueue = run.then((_) {}, onError: (_) {});
+    return run;
   }
 
   /// Анонсы и начало показа частей франшизы, которых нет в библиотеке.
@@ -210,11 +232,21 @@ class ReleaseWatcher {
     return events;
   }
 
-  /// Сохраняет уведомления в центр уведомлений и показывает их.
-  Future<void> _deliver(List<ReleaseEvent> events) async {
-    if (events.isEmpty) return;
-    await _ref.read(noticesRepositoryProvider).add([
-      for (final event in events)
+  /// Сохраняет уведомления в центр уведомлений и показывает их; то же
+  /// уведомление тайтла подряд не повторяется.
+  Future<List<ReleaseEvent>> _deliver(List<ReleaseEvent> events) async {
+    if (events.isEmpty) return const [];
+    final notices = _ref.read(noticesRepositoryProvider);
+    final last = await notices.latestFor({
+      for (final event in events) event.animeId,
+    });
+    final fresh = withoutRepeats(events, {
+      for (final MapEntry(key: id, value: notice) in last.entries)
+        id: (title: notice.title, body: notice.body),
+    });
+    if (fresh.isEmpty) return const [];
+    await notices.add([
+      for (final event in fresh)
         (
           category: NoticeCategory.of(event).name,
           animeId: event.animeId,
@@ -222,7 +254,8 @@ class ReleaseWatcher {
           body: notificationText(event).body,
         ),
     ]);
-    await _notify(events);
+    await _notify(fresh);
+    return fresh;
   }
 
   Future<void> _notify(List<ReleaseEvent> events) async {

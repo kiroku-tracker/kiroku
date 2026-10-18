@@ -223,6 +223,7 @@ void main() {
         updatedAt: DateTime(2026),
         muted: false,
         alertsOn: false,
+        favorite: false,
       ),
       anime: Anime(
         id: info.id,
@@ -325,6 +326,7 @@ void main() {
         updatedAt: DateTime(2026),
         muted: false,
         alertsOn: false,
+        favorite: false,
         dubbing: dubbing,
         dubbingSeen: seen,
       );
@@ -332,6 +334,7 @@ void main() {
         key: 'f',
         muted: false,
         alertsOn: false,
+        favorite: false,
         dubbing: dubbing,
         dubbingSeen: seen,
         updatedAt: DateTime(2026),

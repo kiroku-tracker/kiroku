@@ -389,7 +389,7 @@ class _FranchiseRowState extends State<_FranchiseRow> {
               ),
               Expanded(
                 flex: flex[1],
-                child: tab == null
+                child: tab == null || unit.all != null
                     ? _StatusCounts(unit: unit)
                     : Text(
                         '${tab.label}: ${unit.countOf(tab)} из $total',
@@ -405,14 +405,14 @@ class _FranchiseRowState extends State<_FranchiseRow> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${unit.completedCount} из $total '
-                        '${plural(total, 'части', 'частей', 'частей')}',
+                        unit.all == null
+                            ? '${unit.completedCount} из ${unit.releasedCount} '
+                                  '${plural(unit.releasedCount, 'части', 'частей', 'частей')}'
+                            : '${unit.watchedEpisodes} из '
+                                  '${unit.availableEpisodes} эп.',
                       ),
                       const SizedBox(height: 6),
-                      ProgressBar(
-                        value: unit.completedCount / total,
-                        height: 4,
-                      ),
+                      ProgressBar(value: unit.progress, height: 4),
                     ],
                   ),
                 ),

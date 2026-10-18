@@ -2,7 +2,15 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Разделы бокового меню.
-enum AppSection { library, groups, party, calendar, journal, search, settings }
+enum AppSection {
+  library,
+  party,
+  calendar,
+  journal,
+  search,
+  discover,
+  settings,
+}
 
 final sectionNavigatorKeys = {
   for (final section in AppSection.values) section: GlobalKey<NavigatorState>(),

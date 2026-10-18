@@ -101,6 +101,11 @@ class LibraryPrefsNotifier extends AsyncNotifier<LibraryPrefs> {
       'library.groupFranchises',
       next.groupFranchises.toString(),
     );
+    await settings.write('library.planned', next.planned.name);
+    for (final MapEntry(key: filter, value: sort)
+        in next.plannedSorts.entries) {
+      await settings.write('library.sort.${filter.name}', sort.name);
+    }
   }
 }
 
@@ -202,6 +207,11 @@ class AppPrefsNotifier extends AsyncNotifier<AppPrefs> {
     }
   }
 }
+
+/// Число просмотров тайтлов библиотеки.
+final viewsProvider = StreamProvider<Map<int, ({int views, int removable})>>(
+  (ref) => ref.watch(libraryRepositoryProvider).watchViews(),
+);
 
 /// Оригиналы постеров по адресу обычного постера.
 final posterOriginalsProvider = StreamProvider<Map<String, String>>((ref) {

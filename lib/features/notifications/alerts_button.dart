@@ -30,31 +30,16 @@ class TitleAlertsButton extends ConsumerWidget {
       entry,
       franchises[franchiseKeyOf(entry, anime)],
     );
-    final on = episodeAlerts(entry, prefs);
-
-    final String label;
-    final String tooltip;
-    if (!on) {
-      label = 'Без уведомлений';
-      tooltip = 'Уведомления о новых сериях выключены';
-    } else if (choice != null) {
-      label = choice.name;
-      tooltip = switch (choice.source) {
-        DubbingSource.title => 'Ждать серии в озвучке ${choice.name}',
-        DubbingSource.franchise =>
-          'Ждать серии в озвучке ${choice.name} (выбрана у франшизы)',
-        DubbingSource.seen || DubbingSource.franchiseSeen =>
-          'Ждать серии в озвучке ${choice.name} (по просмотру)',
-      };
-    } else {
-      label = prefs.episodeAlert.label;
-      tooltip = 'Озвучка не известна, уведомления по общей настройке';
-    }
+    final mode = alertModeOf(entry, prefs);
+    final on = mode != EpisodeAlertMode.off;
+    final label = !on || choice == null
+        ? mode.short
+        : '${mode.short} · ${choice.name}';
 
     return _AlertsChip(
       icon: on ? LucideIcons.bell : LucideIcons.bellOff,
       label: label,
-      tooltip: tooltip,
+      tooltip: 'Настроить уведомления',
       dimmed: !on,
       onPressed: () =>
           showTitleDubbingDialog(context, anime: anime, entry: entry),
@@ -83,24 +68,13 @@ class FranchiseAlertsButton extends ConsumerWidget {
     final chosen = franchise?.dubbing;
     final seen = franchise?.dubbingSeen;
 
-    final String label;
-    final String tooltip;
-    if (chosen != null && chosen.isNotEmpty) {
-      label = chosen;
-      tooltip = 'Ждать серии в озвучке $chosen';
-    } else if (chosen == null && seen != null) {
-      label = seen;
-      tooltip = 'Ждать серии в озвучке $seen (по просмотру)';
-    } else {
-      label = prefs.episodeAlert.label;
-      tooltip = 'Озвучка не известна, уведомления по общей настройке';
-    }
-
+    final dubbing = chosen == null ? seen : (chosen.isEmpty ? null : chosen);
     final on = seasonAlerts(franchise, prefs);
     return _AlertsChip(
       icon: on ? LucideIcons.bell : LucideIcons.bellOff,
-      label: label,
-      tooltip: on ? tooltip : '$tooltip. О новых сезонах не сообщать',
+      label: dubbing ?? 'Уведомления',
+      tooltip: 'Настроить уведомления',
+      dimmed: !on,
       onPressed: () => showFranchiseDubbingDialog(
         context,
         franchiseKey: franchiseKey,
@@ -129,23 +103,35 @@ class _AlertsChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = dimmed ? AppColors.muted : AppColors.textSecondary;
+    Color hovered(Set<WidgetState> states, Color hover, Color idle) =>
+        states.contains(WidgetState.hovered) ? hover : idle;
     return Tooltip(
       message: tooltip,
       child: TextButton.icon(
         onPressed: onPressed,
-        icon: Icon(icon, size: 17, color: color),
+        icon: Icon(icon, size: 17),
         label: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 220),
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: color),
-          ),
+          child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
         ),
-        style: TextButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-        ),
+        style:
+            TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+            ).copyWith(
+              foregroundColor: WidgetStateProperty.resolveWith(
+                (states) => hovered(states, Colors.white, color),
+              ),
+              iconColor: WidgetStateProperty.resolveWith(
+                (states) => hovered(states, Colors.white, color),
+              ),
+              backgroundColor: WidgetStateProperty.resolveWith(
+                (states) => hovered(
+                  states,
+                  const Color(0xFF292730),
+                  Colors.transparent,
+                ),
+              ),
+            ),
       ),
     );
   }

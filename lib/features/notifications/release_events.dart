@@ -1,5 +1,6 @@
 import '../../core/labels.dart';
 import '../../data/database/app_database.dart';
+import '../../data/database/settings_repository.dart';
 import '../../data/shikimori/anime_info.dart';
 import '../../data/watch/site_episodes_repository.dart';
 
@@ -58,11 +59,15 @@ class EpisodesOnSite extends ReleaseEvent {
     required this.from,
     required this.to,
     this.dubbing,
+    this.complete = false,
   });
 
   final int from;
   final int to;
   final String? dubbing;
+
+  /// Вышли все серии.
+  final bool complete;
 }
 
 /// Новая часть франшизы.
@@ -112,6 +117,10 @@ List<ReleaseEvent> releaseEvents(Anime before, AnimeInfo after) {
   final was = before.release.availableEpisodes;
   final now = after.release.availableEpisodes;
   final finished = after.release.isReleased;
+  final total = after.release.episodes;
+  // Вышла последняя заявленная серия: сезон завершён, даже если статус на
+  // Shikimori ещё не сменился.
+  final allOut = finished || (total > 0 && after.release.aired >= total);
   final title = after.title;
 
   if (now > was) {
@@ -122,13 +131,17 @@ List<ReleaseEvent> releaseEvents(Anime before, AnimeInfo after) {
         from: was + 1,
         to: now,
         premiere: was == 0,
-        finished: finished,
+        finished: allOut,
       ),
     ];
   }
   if (finished) {
+    // О конце сезона уже сообщено вместе с последней серией.
+    final told = before.release.episodes;
+    if (told > 0 && before.release.aired >= told) return const [];
     return [SeasonFinished(animeId: after.id, title: title, episodes: now)];
   }
+  if (allOut) return const [];
   final oldAt = before.nextEpisodeAt;
   final newAt = after.nextEpisodeAt;
   if (oldAt != null &&
@@ -158,15 +171,19 @@ List<ReleaseEvent> releaseEvents(Anime before, AnimeInfo after) {
     body: finished ? '«${event.title}» · сезон завершён' : '«${event.title}»',
   ),
   SeasonFinished(:final episodes) => (
-    title: 'Сезон завершён',
-    body: '«${event.title}»: вышли все ${episodesLabel(episodes)}',
+    title: episodes > 1 ? 'Вышли все серии' : 'Вышел целиком',
+    body: episodes > 1
+        ? '«${event.title}» · ${episodesLabel(episodes)}'
+        : '«${event.title}»',
   ),
   EpisodeRescheduled(:final episode, :final at) => (
     title: 'Серия $episode перенесена',
     body: '«${event.title}»: теперь ${formatDateTime(at)}',
   ),
-  EpisodesOnSite(:final from, :final to, :final dubbing) => (
-    title: from == to
+  EpisodesOnSite(:final from, :final to, :final dubbing, :final complete) => (
+    title: complete
+        ? 'Все серии на YummyAnime'
+        : from == to
         ? '$from-я серия на YummyAnime'
         : 'Серии $from–$to на YummyAnime',
     body: dubbing == null ? '«${event.title}»' : '«${event.title}» · $dubbing',
@@ -223,6 +240,7 @@ List<ReleaseEvent> siteEvents({
   required SiteEpisodesInfo before,
   required SiteEpisodesInfo after,
   String? dubbing,
+  int total = 0,
 }) {
   if (!before.checked) return const [];
   final was = siteProgress(before, dubbing: dubbing).episodes;
@@ -235,6 +253,51 @@ List<ReleaseEvent> siteEvents({
       from: was + 1,
       to: now.episodes,
       dubbing: now.dubbing,
+      complete: total > 0 && now.episodes >= total,
     ),
   ];
 }
+
+/// События без повторов: тайтл не получает подряд то же уведомление, что
+/// было у него последним.
+List<ReleaseEvent> withoutRepeats(
+  List<ReleaseEvent> events,
+  Map<int, ({String title, String body})> last,
+) {
+  final previous = {...last};
+  final result = <ReleaseEvent>[];
+  for (final event in events) {
+    final text = notificationText(event);
+    if (previous[event.animeId] == text) continue;
+    previous[event.animeId] = text;
+    result.add(event);
+  }
+  return result;
+}
+
+/// События, о которых сообщать при выбранных уведомлениях о сериях.
+List<ReleaseEvent> eventsForMode(
+  List<ReleaseEvent> events,
+  EpisodeAlertMode mode,
+) => [for (final event in events) ?_forMode(event, mode)];
+
+ReleaseEvent? _forMode(ReleaseEvent event, EpisodeAlertMode mode) =>
+    switch (mode) {
+      EpisodeAlertMode.off => null,
+      EpisodeAlertMode.episodes => event,
+      EpisodeAlertMode.premiere => switch (event) {
+        NewEpisodes(premiere: true) ||
+        EpisodesOnSite(from: 1) ||
+        EpisodeRescheduled(episode: 1) => event,
+        _ => null,
+      },
+      EpisodeAlertMode.finished => switch (event) {
+        NewEpisodes(finished: true, :final to) => SeasonFinished(
+          animeId: event.animeId,
+          title: event.title,
+          episodes: to,
+        ),
+        SeasonFinished() || EpisodesOnSite(complete: true) => event,
+        _ => null,
+      },
+    };

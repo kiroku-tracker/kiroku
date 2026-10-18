@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../theme/app_colors.dart';
 import 'context_menu_area.dart';
@@ -6,7 +7,7 @@ import 'interactive_card.dart';
 import 'poster.dart';
 
 /// Карточка тайтла с постером.
-class PosterCard extends StatelessWidget {
+class PosterCard extends StatefulWidget {
   const PosterCard({
     super.key,
     required this.posterUrl,
@@ -20,6 +21,8 @@ class PosterCard extends StatelessWidget {
     this.posterBadgeEnd,
     this.cover,
     this.menu,
+    this.favorite = false,
+    this.onFavorite,
   });
 
   final String? posterUrl;
@@ -39,6 +42,10 @@ class PosterCard extends StatelessWidget {
   final Widget? cover;
 
   final List<Widget> Function()? menu;
+
+  /// В избранном: сердечко в углу видно всегда, иначе при наведении.
+  final bool favorite;
+  final VoidCallback? onFavorite;
 
   static const _padding = 14.0;
   static const _titleHeight = 44.0;
@@ -60,13 +67,38 @@ class PosterCard extends StatelessWidget {
       _padding;
 
   @override
+  State<PosterCard> createState() => _PosterCardState();
+}
+
+class _PosterCardState extends State<PosterCard> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    final menu = this.menu;
-    final card = _card();
+    final menu = widget.menu;
+    final card = MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: _card(),
+    );
     return menu == null ? card : ContextMenuArea(items: menu, child: card);
   }
 
   Widget _card() {
+    final PosterCard(
+      :posterUrl,
+      :title,
+      :subtitle,
+      :meta,
+      :action,
+      :onTap,
+      :extra,
+      :posterBadge,
+      :posterBadgeEnd,
+      :cover,
+      :onFavorite,
+    ) = widget;
+    final corner = onFavorite == null ? 0.0 : 32.0;
     return InteractiveCard(
       onTap: onTap,
       semanticLabel: 'Открыть: $title',
@@ -80,23 +112,33 @@ class PosterCard extends StatelessWidget {
                 Positioned(
                   top: 8,
                   left: 8,
-                  right: posterBadgeEnd == null ? 8 : 48,
+                  right: (posterBadgeEnd == null ? 8 : 48) + corner,
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: posterBadge!,
+                    child: posterBadge,
                   ),
                 ),
               if (posterBadgeEnd != null)
-                Positioned(top: 8, right: 8, child: posterBadgeEnd!),
+                Positioned(top: 8, right: 8 + corner, child: posterBadgeEnd),
+              if (onFavorite != null)
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: _FavoriteCorner(
+                    active: widget.favorite,
+                    visible: widget.favorite || _hovered,
+                    onPressed: onFavorite,
+                  ),
+                ),
             ],
           ),
           Padding(
-            padding: const EdgeInsets.all(_padding),
+            padding: const EdgeInsets.all(PosterCard._padding),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 SizedBox(
-                  height: _titleHeight,
+                  height: PosterCard._titleHeight,
                   child: Text(
                     title,
                     maxLines: 2,
@@ -111,7 +153,7 @@ class PosterCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 SizedBox(
-                  height: _lineHeight,
+                  height: PosterCard._lineHeight,
                   child: Text(
                     subtitle,
                     maxLines: 1,
@@ -124,7 +166,7 @@ class PosterCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 SizedBox(
-                  height: _lineHeight,
+                  height: PosterCard._lineHeight,
                   child: DefaultTextStyle.merge(
                     style: const TextStyle(
                       fontSize: 13,
@@ -137,15 +179,60 @@ class PosterCard extends StatelessWidget {
                 ),
                 if (extra != null)
                   SizedBox(
-                    height: _extraHeight,
+                    height: PosterCard._extraHeight,
                     child: Align(alignment: Alignment.bottomLeft, child: extra),
                   ),
                 const SizedBox(height: 12),
-                SizedBox(height: _actionHeight, child: action),
+                SizedBox(height: PosterCard._actionHeight, child: action),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Сердечко «В избранное» в углу постера.
+class _FavoriteCorner extends StatelessWidget {
+  const _FavoriteCorner({
+    required this.active,
+    required this.visible,
+    required this.onPressed,
+  });
+
+  final bool active;
+  final bool visible;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedOpacity(
+      opacity: visible ? 1 : 0,
+      duration: const Duration(milliseconds: 120),
+      child: IgnorePointer(
+        ignoring: !visible,
+        child: Tooltip(
+          message: active ? 'Убрать из избранного' : 'В избранное',
+          child: Material(
+            color: const Color(0x66000000),
+            shape: const CircleBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: onPressed,
+              child: SizedBox.square(
+                dimension: 26,
+                child: Icon(
+                  LucideIcons.heart,
+                  size: 13,
+                  color: active
+                      ? AppColors.favorite.withValues(alpha: 0.9)
+                      : const Color(0xD9FFFFFF),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

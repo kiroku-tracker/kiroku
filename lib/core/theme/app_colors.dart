@@ -13,6 +13,8 @@ abstract final class AppColors {
   static const accent = Color(0xFF6F56E8);
   static const accentHover = Color(0xFF8069EF);
   static const accentText = Color(0xFF9E8CFF);
+
+  static const favorite = Color(0xFFFF6B8B);
   static const progress = Color(0xFF745DE4);
 
   static const card = Color(0xFF19181D);

@@ -4,7 +4,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../discord/discord_menu.dart';
+import '../../core/widgets/favorite_button.dart';
 import '../../core/widgets/app_menu_anchor.dart';
+import '../../core/widgets/card_marks.dart';
 import '../../core/labels.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
@@ -25,7 +27,6 @@ import '../../data/shikimori/release_facts.dart';
 import '../../data/shikimori/shikimori_client.dart';
 import '../franchise/franchise_actions.dart';
 import '../groups/group_actions.dart';
-import '../groups/group_screen.dart';
 import '../franchise/title_franchise_panel.dart';
 import '../library/add_to_library_button.dart';
 import '../library/entry_status_button.dart';
@@ -34,6 +35,7 @@ import '../notifications/alerts_button.dart';
 import '../notifications/site_line.dart';
 import '../watch/watch_button.dart';
 import '../watch/watch_next_button.dart';
+import 'views_menu.dart';
 import 'episodes_panel.dart';
 import 'history_panel.dart';
 import 'note_panel.dart';
@@ -150,13 +152,22 @@ class _TitleScreenState extends ConsumerState<TitleScreen> {
                 ),
               ),
               const Spacer(),
-              if (anime != null && entry != null)
+              if (anime != null && entry != null) ...[
+                FavoriteButton(
+                  active: entry.favorite,
+                  onPressed: () => ref
+                      .read(libraryRepositoryProvider)
+                      .setFavorite(anime.id, !entry.favorite),
+                ),
+                const SizedBox(width: 4),
                 TitleAlertsButton(anime: anime, entry: entry),
+              ],
               if (anime != null)
                 _MoreMenu(
                   anime: anime,
                   entry: entry,
                   canRestart: canRestart,
+                  views: ref.watch(viewsProvider).value?[anime.id],
                   markNext: entry == null
                       ? null
                       : _markable(anime, viewing.events.keys.toSet()),
@@ -261,6 +272,7 @@ class _Hero extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final release = anime.release;
     final progress = ref.watch(titleProgressProvider(anime.id));
+    final views = ref.watch(viewsProvider).value?[anime.id]?.views ?? 0;
     final nextAt = anime.nextEpisodeAt;
     final details = [
       releaseSummary(release),
@@ -355,11 +367,19 @@ class _Hero extends ConsumerWidget {
                 ),
               if (entry != null) ...[
                 const SizedBox(height: 14),
-                StarRating(
-                  score: entry!.score,
-                  onChanged: (score) => ref
-                      .read(libraryRepositoryProvider)
-                      .setScore(anime.id, score),
+                Row(
+                  children: [
+                    StarRating(
+                      score: entry!.score,
+                      onChanged: (score) => ref
+                          .read(libraryRepositoryProvider)
+                          .setScore(anime.id, score),
+                    ),
+                    if (views > 1) ...[
+                      const SizedBox(width: 18),
+                      ViewsMark(count: views, size: 15),
+                    ],
+                  ],
                 ),
               ],
               if (entry != null && !release.isAnnounced) ...[
@@ -449,6 +469,7 @@ class _MoreMenu extends ConsumerWidget {
     required this.entry,
     required this.canRestart,
     this.markNext,
+    this.views,
   });
 
   final Anime anime;
@@ -458,6 +479,9 @@ class _MoreMenu extends ConsumerWidget {
   final bool canRestart;
 
   final int? markNext;
+
+  /// Число просмотров, если тайтл просмотрен хотя бы раз.
+  final ({int views, int removable})? views;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -475,6 +499,8 @@ class _MoreMenu extends ConsumerWidget {
             onPressed: () =>
                 markNextEpisode(ref, animeId: anime.id, title: anime.title),
           ),
+        if (views case final views?)
+          viewsMenuItem(context, ref, parts: {anime.id: views}),
         AppMenuItem(
           label: 'Открыть на Shikimori',
           icon: LucideIcons.externalLink,

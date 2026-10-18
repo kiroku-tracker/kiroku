@@ -1,4 +1,5 @@
 import 'app_database.dart';
+import 'watch_status.dart';
 
 /// Настройки в базе.
 class SettingsRepository {
@@ -31,6 +32,21 @@ enum LibrarySort {
   const LibrarySort(this.label);
 
   final String label;
+}
+
+/// Пункты «Хочу посмотреть» по выходу серий.
+enum PlannedFilter {
+  all('Все', LibrarySort.updated),
+  available('Доступно', LibrarySort.added),
+  airing('Выходит', LibrarySort.nextEpisode),
+  announced('Не вышло', LibrarySort.nextEpisode);
+
+  const PlannedFilter(this.label, this.defaultSort);
+
+  final String label;
+
+  /// Сортировка пункта, пока её не меняли.
+  final LibrarySort defaultSort;
 }
 
 /// Фильтр по типу тайтла.
@@ -66,6 +82,8 @@ class LibraryPrefs {
     this.sort = LibrarySort.updated,
     this.kind = KindFilter.all,
     this.groupFranchises = true,
+    this.planned = PlannedFilter.all,
+    this.plannedSorts = const {},
   });
 
   factory LibraryPrefs.fromSettings(Map<String, String> settings) {
@@ -79,6 +97,16 @@ class LibraryPrefs {
       sort: pick(LibrarySort.values, 'library.sort', LibrarySort.updated),
       kind: pick(KindFilter.values, 'library.kind', KindFilter.all),
       groupFranchises: settings['library.groupFranchises'] != 'false',
+      planned: pick(PlannedFilter.values, 'library.planned', PlannedFilter.all),
+      plannedSorts: {
+        for (final filter in PlannedFilter.values)
+          if (filter != PlannedFilter.all)
+            filter: pick(
+              LibrarySort.values,
+              'library.sort.${filter.name}',
+              filter.defaultSort,
+            ),
+      },
     );
   }
 
@@ -88,23 +116,53 @@ class LibraryPrefs {
 
   final bool groupFranchises;
 
+  /// Выбранный пункт «Хочу посмотреть».
+  final PlannedFilter planned;
+
+  /// Сортировка пунктов «Хочу посмотреть», кроме «Все».
+  final Map<PlannedFilter, LibrarySort> plannedSorts;
+
+  bool _ownSort(WatchStatus? tab) =>
+      tab == WatchStatus.planned && planned != PlannedFilter.all;
+
+  /// Сортировка открытой вкладки: у пунктов «Хочу посмотреть» своя.
+  LibrarySort sortIn(WatchStatus? tab) =>
+      _ownSort(tab) ? plannedSorts[planned] ?? planned.defaultSort : sort;
+
+  /// Меняет сортировку открытой вкладки.
+  LibraryPrefs withSort(WatchStatus? tab, LibrarySort value) => _ownSort(tab)
+      ? copyWith(plannedSorts: {...plannedSorts, planned: value})
+      : copyWith(sort: value);
+
   LibraryPrefs copyWith({
     LibraryView? view,
     LibrarySort? sort,
     KindFilter? kind,
     bool? groupFranchises,
+    PlannedFilter? planned,
+    Map<PlannedFilter, LibrarySort>? plannedSorts,
   }) => LibraryPrefs(
     view: view ?? this.view,
     sort: sort ?? this.sort,
     kind: kind ?? this.kind,
     groupFranchises: groupFranchises ?? this.groupFranchises,
+    planned: planned ?? this.planned,
+    plannedSorts: plannedSorts ?? this.plannedSorts,
   );
 }
+
+/// Уведомления о сериях «Хочу посмотреть»; прежний выключатель «Новые
+/// серии» выключал их совсем.
+EpisodeAlertMode _plannedAlert(Map<String, String> settings) =>
+    EpisodeAlertMode.values.asNameMap()[settings['notify.planned']] ??
+    (settings['notify.episodes'] == 'false'
+        ? EpisodeAlertMode.off
+        : EpisodeAlertMode.episodes);
 
 class AppPrefs {
   const AppPrefs({
     this.closeToTray = true,
-    this.notifyEpisodes = true,
+    this.alertPlanned = EpisodeAlertMode.episodes,
     this.notifyFranchises = true,
     this.notifySeasonAnnounce = true,
     this.notifySeasonStart = true,
@@ -129,7 +187,7 @@ class AppPrefs {
 
   factory AppPrefs.fromSettings(Map<String, String> settings) => AppPrefs(
     closeToTray: settings['app.closeToTray'] != 'false',
-    notifyEpisodes: settings['notify.episodes'] != 'false',
+    alertPlanned: _plannedAlert(settings),
     notifyFranchises: settings['notify.franchises'] != 'false',
     notifySeasonAnnounce: settings['notify.seasonAnnounce'] != 'false',
     notifySeasonStart: settings['notify.seasonStart'] != 'false',
@@ -165,7 +223,8 @@ class AppPrefs {
 
   final bool closeToTray;
 
-  final bool notifyEpisodes;
+  /// Уведомления о сериях для «Хочу посмотреть».
+  final EpisodeAlertMode alertPlanned;
 
   final bool notifyFranchises;
 
@@ -213,7 +272,7 @@ class AppPrefs {
 
   Map<String, String> toSettings() => {
     'app.closeToTray': '$closeToTray',
-    'notify.episodes': '$notifyEpisodes',
+    'notify.planned': alertPlanned.name,
     'notify.franchises': '$notifyFranchises',
     'notify.seasonAnnounce': '$notifySeasonAnnounce',
     'notify.seasonStart': '$notifySeasonStart',
@@ -238,7 +297,7 @@ class AppPrefs {
 
   AppPrefs copyWith({
     bool? closeToTray,
-    bool? notifyEpisodes,
+    EpisodeAlertMode? alertPlanned,
     bool? notifyFranchises,
     bool? notifySeasonAnnounce,
     bool? notifySeasonStart,
@@ -261,7 +320,7 @@ class AppPrefs {
     Set<PartyRight>? partyGuestRights,
   }) => AppPrefs(
     closeToTray: closeToTray ?? this.closeToTray,
-    notifyEpisodes: notifyEpisodes ?? this.notifyEpisodes,
+    alertPlanned: alertPlanned ?? this.alertPlanned,
     notifyFranchises: notifyFranchises ?? this.notifyFranchises,
     notifySeasonAnnounce: notifySeasonAnnounce ?? this.notifySeasonAnnounce,
     notifySeasonStart: notifySeasonStart ?? this.notifySeasonStart,
@@ -297,7 +356,7 @@ enum PartyNetwork {
 
 /// Что гость может делать с общим просмотром.
 enum PartyRight {
-  pause('Пауза и продолжение', 'пауза'),
+  pause('Пауза, продолжение и скорость', 'пауза и скорость'),
   seek('Перемотка', 'перемотка'),
   episode('Выбор серии и озвучки', 'выбор серии');
 
@@ -337,9 +396,24 @@ enum YummyHost {
 }
 
 /// Когда сообщать о серии.
+/// Когда сообщать о сериях тайтла.
+enum EpisodeAlertMode {
+  off('Не уведомлять', 'Без уведомлений'),
+  premiere('О премьере', 'О премьере'),
+  episodes('О каждой серии', 'О каждой серии'),
+  finished('Когда выйдут все серии', 'Когда выйдут все');
+
+  const EpisodeAlertMode(this.label, this.short);
+
+  final String label;
+
+  /// Подпись на кнопке уведомлений.
+  final String short;
+}
+
 enum EpisodeAlert {
-  air('В японском эфире'),
-  site('На YummyAnime');
+  air('сразу после показа в Японии'),
+  site('любой перевод на YummyAnime');
 
   const EpisodeAlert(this.label);
 

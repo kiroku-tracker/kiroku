@@ -59,6 +59,16 @@ class NoticesRepository {
     }
   }
 
+  /// Последнее уведомление каждого тайтла из [animeIds].
+  Future<Map<int, Notice>> latestFor(Iterable<int> animeIds) async {
+    final rows =
+        await (_db.select(_db.notices)
+              ..where((notice) => notice.animeId.isIn(animeIds))
+              ..orderBy([(notice) => OrderingTerm.asc(notice.id)]))
+            .get();
+    return {for (final row in rows) row.animeId: row};
+  }
+
   Future<void> markAllRead() =>
       (_db.update(_db.notices)..where((notice) => notice.read.equals(false)))
           .write(const NoticesCompanion(read: Value(true)));

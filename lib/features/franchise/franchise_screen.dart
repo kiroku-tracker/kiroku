@@ -4,7 +4,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../discord/discord_menu.dart';
+import '../../core/widgets/favorite_button.dart';
 import '../../core/widgets/app_menu_anchor.dart';
+import '../../core/widgets/card_marks.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/page_header.dart';
@@ -14,6 +16,7 @@ import '../../core/widgets/poster_card.dart';
 import '../../core/widgets/status_menu.dart';
 import '../../data/database/app_database.dart';
 import '../../data/database/franchise_rules.dart';
+import '../../data/database/library_repository.dart';
 import '../../data/database/status_action.dart';
 import '../../data/database/user_groups_repository.dart';
 import '../../data/database/watch_status.dart';
@@ -24,6 +27,7 @@ import '../groups/group_actions.dart';
 import '../notifications/alerts_button.dart';
 import '../library/library_actions.dart';
 import '../library/library_filter.dart';
+import '../title/views_menu.dart';
 import '../title/title_screen.dart';
 import '../watch/watch_button.dart';
 import 'franchise_actions.dart';
@@ -92,7 +96,15 @@ class _FranchiseScreenState extends ConsumerState<FranchiseScreen> {
     final mainDone = parts.main
         .where((part) => part.item?.status == WatchStatus.completed)
         .length;
+    final mainReleased = parts.main
+        .where((part) => !part.anime.release.isAnnounced)
+        .length;
     final average = averageScoreOf(owned);
+    final viewsByPart = _franchiseViews(
+      owned,
+      ref.watch(viewsProvider).value ?? const {},
+    );
+    final views = viewCount(viewsByPart ?? const {});
     const backLabel = 'Назад к франшизе';
 
     return SingleChildScrollView(
@@ -111,6 +123,13 @@ class _FranchiseScreenState extends ConsumerState<FranchiseScreen> {
                 ),
               ),
               const Spacer(),
+              FavoriteButton(
+                active: row?.favorite ?? false,
+                onPressed: () => ref
+                    .read(franchiseRepositoryProvider)
+                    .setFavorite(key, !(row?.favorite ?? false)),
+              ),
+              const SizedBox(width: 4),
               if (owned.isNotEmpty)
                 FranchiseAlertsButton(
                   franchiseKey: key,
@@ -123,6 +142,7 @@ class _FranchiseScreenState extends ConsumerState<FranchiseScreen> {
                 hasCustomName: row?.name != null,
                 ownedParts: [for (final item in owned) item.anime],
                 coverId: cover?.anime.id,
+                viewsByPart: viewsByPart,
                 shikimoriId: isCustomFranchise(key)
                     ? null
                     : parts.main.firstOrNull?.anime.id,
@@ -173,25 +193,31 @@ class _FranchiseScreenState extends ConsumerState<FranchiseScreen> {
                       title,
                       style: Theme.of(context).textTheme.headlineLarge,
                     ),
-                    if (average != null) ...[
+                    if (average != null || views > 1) ...[
                       const SizedBox(height: 10),
                       Row(
                         children: [
-                          const Icon(
-                            LucideIcons.star,
-                            size: 16,
-                            color: Color(0xFFFFC857),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '${formatAverage(average)} из 10',
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'средняя оценка частей',
-                            style: TextStyle(color: AppColors.muted),
-                          ),
+                          if (average != null) ...[
+                            const Icon(
+                              LucideIcons.star,
+                              size: 16,
+                              color: Color(0xFFFFC857),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '${formatAverage(average)} из 10',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'средняя оценка частей',
+                              style: TextStyle(color: AppColors.muted),
+                            ),
+                            const SizedBox(width: 18),
+                          ],
+                          if (views > 1) ViewsMark(count: views, size: 15),
                         ],
                       ),
                     ],
@@ -210,7 +236,7 @@ class _FranchiseScreenState extends ConsumerState<FranchiseScreen> {
                                   ),
                                 ),
                                 Text(
-                                  '$mainDone / ${parts.main.length}',
+                                  '$mainDone / $mainReleased',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -219,7 +245,9 @@ class _FranchiseScreenState extends ConsumerState<FranchiseScreen> {
                             ),
                             const SizedBox(height: 9),
                             ProgressBar(
-                              value: mainDone / parts.main.length,
+                              value: mainReleased == 0
+                                  ? 0
+                                  : mainDone / mainReleased,
                               height: 9,
                             ),
                           ],
@@ -345,6 +373,7 @@ class _MoreMenu extends ConsumerWidget {
     required this.ownedParts,
     required this.coverId,
     required this.shikimoriId,
+    this.viewsByPart,
   });
 
   final String franchiseKey;
@@ -352,6 +381,9 @@ class _MoreMenu extends ConsumerWidget {
   final bool hasCustomName;
   final List<Anime> ownedParts;
   final int? coverId;
+
+  /// Число просмотров каждой просмотренной части.
+  final Map<int, ({int views, int removable})>? viewsByPart;
 
   final int? shikimoriId;
 
@@ -369,6 +401,8 @@ class _MoreMenu extends ConsumerWidget {
           onPressed: () =>
               renameFranchise(context, ref, key: franchiseKey, current: name),
         ),
+        if (viewsByPart case final viewsByPart?)
+          viewsMenuItem(context, ref, parts: viewsByPart, franchise: true),
         if (hasCustomName && !isCustomFranchise(franchiseKey))
           AppMenuItem(
             label: 'Название как у Shikimori',
@@ -574,4 +608,13 @@ class _Actions extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// Число просмотров просмотренных частей франшизы.
+Map<int, ({int views, int removable})>? _franchiseViews(
+  List<LibraryItem> owned,
+  Map<int, ({int views, int removable})> views,
+) {
+  final parts = viewParts(owned, views);
+  return parts.isEmpty ? null : parts;
 }

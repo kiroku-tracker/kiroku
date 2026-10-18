@@ -151,6 +151,7 @@ class FranchiseUnit extends LibraryUnit {
     required this.name,
     required this.items,
     required this.cover,
+    this.all,
   });
 
   final String key;
@@ -160,8 +161,34 @@ class FranchiseUnit extends LibraryUnit {
 
   final LibraryItem cover;
 
+  /// Все части в библиотеке, если в [items] только части с одним статусом.
+  final List<LibraryItem>? all;
+
+  /// Просмотренные серии частей.
+  int get watchedEpisodes =>
+      items.fold(0, (sum, item) => sum + item.progress.watched);
+
+  /// Вышедшие серии частей.
+  int get availableEpisodes =>
+      items.fold(0, (sum, item) => sum + item.anime.release.availableEpisodes);
+
   int get completedCount =>
       items.where((item) => item.status == WatchStatus.completed).length;
+
+  /// Сколько частей уже вышло: невышедшая часть не делает франшизу
+  /// недосмотренной.
+  int get releasedCount =>
+      items.where((item) => !item.anime.release.isAnnounced).length;
+
+  /// Доля просмотренных среди вышедших частей; у частей с одним статусом
+  /// доля просмотренных серий.
+  double get progress {
+    if (all != null) {
+      final available = availableEpisodes;
+      return available == 0 ? 0 : watchedEpisodes / available;
+    }
+    return releasedCount == 0 ? 0 : completedCount / releasedCount;
+  }
 
   int countOf(WatchStatus status) =>
       items.where((item) => item.status == status).length;

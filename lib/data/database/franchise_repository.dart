@@ -187,6 +187,10 @@ class FranchiseRepository {
         ),
       );
 
+  /// Добавляет франшизу в избранное или убирает из него.
+  Future<Future<void> Function()> setFavorite(String key, bool favorite) =>
+      _editRow(key, (_) => FranchisesCompanion(favorite: Value(favorite)));
+
   Future<Future<void> Function()> _editRow(
     String key,
     FranchisesCompanion Function(DateTime now) edit,

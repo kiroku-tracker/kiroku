@@ -113,10 +113,13 @@ class ShikimoriClient {
   Future<List<AnimeInfo>> getAnimes(
     List<int> ids, {
     bool withRelations = false,
+    bool withDetails = false,
   }) async {
-    final fields = withRelations
-        ? '$_animeFields $_relationFields'
-        : _animeFields;
+    final fields = [
+      _animeFields,
+      if (withRelations) _relationFields,
+      if (withDetails) _detailFields,
+    ].join(' ');
     final result = <AnimeInfo>[];
     for (var start = 0; start < ids.length; start += 50) {
       final chunk = ids.skip(start).take(50).toList();
@@ -160,6 +163,29 @@ class ShikimoriClient {
     );
     final animes = _parseAnimes(data);
     return animes.isEmpty ? null : animes.first;
+  }
+
+  /// Похожие тайтлы по мнению Shikimori, номерами.
+  Future<List<int>> similarIds(int id) async {
+    final response = await _limiter.run(
+      () => _http
+          .get(
+            Uri.parse('$siteUrl/api/animes/$id/similar'),
+            headers: {'User-Agent': _userAgent},
+          )
+          .timeout(_timeout),
+    );
+    if (response.statusCode != 200) {
+      throw ShikimoriException(
+        'Shikimori ответил ошибкой ${response.statusCode}',
+      );
+    }
+    final json = jsonDecode(utf8.decode(response.bodyBytes));
+    if (json is! List) return const [];
+    return [
+      for (final item in json)
+        if (item is Map && item['id'] != null) int.parse('${item['id']}'),
+    ];
   }
 
   /// Пользователь по нику или ссылке.

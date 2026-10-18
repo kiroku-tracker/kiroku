@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/widgets/app_menu_anchor.dart';
 import '../../core/labels.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/widgets/card_marks.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/poster.dart';
 import '../../core/widgets/poster_card.dart';
@@ -14,6 +15,7 @@ import '../../data/database/app_database.dart';
 import '../../data/database/franchise_rules.dart';
 import '../../data/database/library_repository.dart';
 import '../../data/database/queue_repository.dart';
+import '../../data/providers.dart';
 import '../library/add_to_library_button.dart';
 import '../library/entry_status_button.dart';
 import '../title/title_screen.dart';
@@ -130,6 +132,7 @@ class _PartRowState extends ConsumerState<_PartRow> {
   @override
   Widget build(BuildContext context) {
     final anime = widget.part.anime;
+    final views = ref.watch(viewsProvider).value?[anime.id]?.views ?? 0;
     final item = widget.part.item;
     final release = anime.release;
     final inLibrary = item != null;
@@ -250,13 +253,22 @@ class _PartRowState extends ConsumerState<_PartRow> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(
-                          '${item.progress.watched} / '
-                          '${release.availableEpisodes}',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            if (views > 1) ...[
+                              ViewsMark(count: views),
+                              const SizedBox(width: 10),
+                            ],
+                            Text(
+                              '${item.progress.watched} / '
+                              '${release.availableEpisodes}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 5),
                         ProgressBar(

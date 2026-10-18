@@ -80,6 +80,7 @@ const siteScript = r'''
       var item = all[type];
       if (!item || Date.now() - item.at > 10000) return false;
       if (type === 'seeked' && Math.abs(time - item.value) > 3) return false;
+      if (type === 'ratechange' && Math.abs(time - item.value) > 0.01) return false;
       delete all[type];
       return true;
     }
@@ -99,6 +100,14 @@ const siteScript = r'''
         }
         return;
       }
+      if (action === 'rate') {
+        if (main && typeof position === 'number' &&
+            Math.abs(main.playbackRate - position) > 0.001) {
+          expect(main, 'ratechange', position);
+          main.playbackRate = position;
+        }
+        return;
+      }
       var paused = videos.filter(function (v) { return v.__kirokuPaused; });
       if (paused.length === 0 && main) paused = [main];
       if (paused.length === 0) {
@@ -113,14 +122,17 @@ const siteScript = r'''
         if (playing && playing.catch) playing.catch(function () {});
       });
     }
-    ['play', 'pause', 'seeked'].forEach(function (type) {
+    ['play', 'pause', 'seeked', 'ratechange'].forEach(function (type) {
       document.addEventListener(type, function (e) {
         var v = e.target;
         if (!isMain(v)) return;
         if (type === 'play' && !v.__kirokuStart) v.__kirokuStart = Date.now();
-        if (expected(v, type, v.currentTime)) return;
+        if (expected(v, type, type === 'ratechange' ? v.playbackRate : v.currentTime)) return;
         if (type === 'seeked' && Date.now() - (v.__kirokuStart || 0) < 8000) return;
-        send({ kiroku: 6, event: type, time: v.currentTime, url: location.href });
+        send({
+          kiroku: 6, event: type, time: v.currentTime, rate: v.playbackRate,
+          url: location.href
+        });
       }, true);
     });
     window.addEventListener('message', function (e) {
@@ -353,10 +365,11 @@ const siteScript = r'''
         duration: isFinite(v.duration) ? v.duration : -1,
         paused: v.paused,
         muted: v.muted,
+        rate: v.playbackRate,
         ready: v.readyState >= 3
       };
     });
     send({ kiroku: 1, url: location.href, title: document.title, top: top, videos: videos });
-  }, 1000);
+  }, 500);
 })();
 ''';

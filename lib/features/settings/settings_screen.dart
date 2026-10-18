@@ -128,15 +128,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 SettingRow(
                   title: 'Отмечать досмотренные серии',
                   text:
-                      'Во встроенном плеере и в браузерах Chrome, Edge, '
-                      'Яндекс, Opera, Vivaldi',
+                      'Плеер Kiroku и браузеры Chrome, Edge, Яндекс, Opera, '
+                      'Vivaldi',
                   value: prefs.autoMark,
                   onChanged: (value) =>
                       change((prefs) => prefs.copyWith(autoMark: value)),
                 ),
                 SettingRow(
-                  title: 'Добавлять тайтл при начале просмотра',
-                  text: 'Тайтл не из библиотеки попадает в «Смотрю»',
+                  title: 'Добавлять тайтл в «Смотрю»',
+                  text: 'Когда начат просмотр тайтла не из библиотеки',
                   value: prefs.autoAdd,
                   enabled: prefs.autoMark,
                   sub: true,
@@ -144,16 +144,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       change((prefs) => prefs.copyWith(autoAdd: value)),
                 ),
                 ChoiceRow(
-                  title: 'Порог просмотра',
-                  text: 'Сколько серии нужно посмотреть для отметки',
+                  title: 'Отмечать после',
                   enabled: prefs.autoMark,
                   sub: true,
                   control: SelectButton<int>(
                     icon: LucideIcons.gauge,
-                    tooltip: 'Порог просмотра',
+                    tooltip: 'Отмечать после',
                     value: prefs.autoMarkThreshold,
                     options: const [70, 75, 80, 85, 90, 95],
-                    labelOf: (value) => '$value%',
+                    labelOf: (value) => '$value% серии',
                     onChanged: (value) => change(
                       (prefs) => prefs.copyWith(autoMarkThreshold: value),
                     ),
@@ -176,8 +175,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Column(
               children: [
                 SettingRow(
-                  title: 'Продолжить просмотр',
-                  text: 'Тайтлы с новыми сериями над вкладками',
+                  title: 'Блок «Продолжить просмотр»',
+                  text: 'Над вкладками библиотеки',
                   value: prefs.showContinue,
                   onChanged: (value) =>
                       change((prefs) => prefs.copyWith(showContinue: value)),
@@ -200,21 +199,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               children: [
                 SettingRow(
                   title: 'Встроенный плеер',
-                  text: '«Смотреть» открывает серию в Kiroku',
+                  text: 'Серии открываются в Kiroku, а не в браузере',
                   value: prefs.watchInApp,
                   onChanged: (value) =>
                       change((prefs) => prefs.copyWith(watchInApp: value)),
                 ),
                 SettingRow(
                   title: 'Скрывать спойлеры',
-                  text: 'Кадры серии не видны до её запуска',
+                  text: 'Кадры серии скрыты до её запуска',
                   value: prefs.hideSpoilers,
                   onChanged: (value) =>
                       change((prefs) => prefs.copyWith(hideSpoilers: value)),
                 ),
                 ChoiceRow(
                   title: 'Сайт для просмотра',
-                  text: 'У тайтла со своей ссылкой открывается она',
+                  text: 'Тайтл со своей ссылкой открывается по ней',
                   control: SelectButton<String>(
                     icon: LucideIcons.globe,
                     tooltip: 'Сайт для просмотра',
@@ -226,7 +225,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 ChoiceRow(
                   title: 'Дизайн YummyAnime',
-                  text: 'Версия сайта для просмотра',
                   control: SelectButton<YummyHost>(
                     icon: LucideIcons.layoutTemplate,
                     tooltip: 'Дизайн YummyAnime',
@@ -248,7 +246,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               children: [
                 ChoiceRow(
                   title: 'Сеть',
-                  text: 'Виртуальная сеть ($partyVpns) или свой адрес',
+                  text: prefs.partyNetwork == PartyNetwork.vpn
+                      ? partyVpns
+                      : 'Адрес, который видят гости',
                   control: SelectButton<PartyNetwork>(
                     icon: LucideIcons.network,
                     tooltip: 'Сеть',
@@ -262,7 +262,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 ChoiceRow(
                   title: 'Адрес комнаты',
-                  text: 'Порт по умолчанию $partyPort',
+                  text: 'Порт можно не писать, по умолчанию $partyPort',
                   enabled: prefs.partyNetwork == PartyNetwork.custom,
                   sub: true,
                   control: _PrefField(
@@ -272,26 +272,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         change((prefs) => prefs.copyWith(partyAddress: value)),
                   ),
                 ),
-                for (final (right, title, text) in const [
-                  (
-                    PartyRight.pause,
-                    'Пауза у гостей',
-                    'Пауза и продолжение у всех в комнате',
-                  ),
-                  (
-                    PartyRight.seek,
-                    'Перемотка у гостей',
-                    'Перемотка у всех в комнате',
-                  ),
-                  (
-                    PartyRight.episode,
-                    'Выбор серии у гостей',
-                    'Серия и озвучка тайтла комнаты',
-                  ),
+                const SettingSection('Гости могут'),
+                for (final (right, title) in const [
+                  (PartyRight.pause, 'Ставить паузу и менять скорость'),
+                  (PartyRight.seek, 'Перематывать'),
+                  (PartyRight.episode, 'Выбирать серию и озвучку'),
                 ])
                   SettingRow(
                     title: title,
-                    text: text,
                     value: prefs.partyGuestRights.contains(right),
                     onChanged: (value) => change(
                       (prefs) => prefs.copyWith(
@@ -314,7 +302,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SettingRow(
-                  title: 'Отображать просмотр в статусе',
+                  title: 'Показывать просмотр в статусе',
                   text: 'Тайтл и серия, пока идёт видео',
                   value: prefs.discord,
                   onChanged: (value) =>
@@ -323,7 +311,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 for (final site in discordSites)
                   SettingRow(
                     title: site,
-                    text: 'Показывать просмотр с этого сайта',
                     value: !prefs.discordSitesOff.contains(site),
                     enabled: prefs.discord,
                     sub: true,
@@ -337,7 +324,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 if (prefs.discord)
                   const SettingNote(
-                    'Группу, франшизу или тайтл можно скрыть в меню «…» на их '
+                    'Скрыть тайтл, франшизу или группу: меню «…» на их '
                     'странице',
                   ),
               ],
