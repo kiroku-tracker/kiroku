@@ -15,6 +15,7 @@ import '../../data/providers.dart';
 import '../../data/shikimori/anime_info.dart';
 import '../title/title_screen.dart';
 import 'discover_logic.dart';
+import '../welcome/one_time_tip.dart';
 
 /// Тайтл для карточек и почему он предложен.
 typedef DiscoverEntry = ({AnimeInfo anime, String reason});
@@ -201,54 +202,66 @@ class _SwipeDeckState extends ConsumerState<SwipeDeck>
                 ],
               ),
               const SizedBox(height: 8),
-              SizedBox(
-                height: _cardHeight,
-                child: Stack(
-                  children: [
-                    if (next != null)
-                      Positioned.fill(
-                        child: Transform.scale(
-                          scale: 0.94,
-                          child: Opacity(
-                            opacity: 0.55,
-                            child: _SwipeCard(entry: next, shift: Offset.zero),
+              OneTimeTip(
+                id: 'swipe-keys',
+                text:
+                    'Клавиши: → хочу посмотреть, ← не интересно, ↓ пропустить, '
+                    '↑ уже смотрел, Backspace вернуть',
+                targetAnchor: Alignment.topRight,
+                followerAnchor: Alignment.topLeft,
+                offset: const Offset(20, 40),
+                child: SizedBox(
+                  height: _cardHeight,
+                  child: Stack(
+                    children: [
+                      if (next != null)
+                        Positioned.fill(
+                          child: Transform.scale(
+                            scale: 0.94,
+                            child: Opacity(
+                              opacity: 0.55,
+                              child: _SwipeCard(
+                                entry: next,
+                                shift: Offset.zero,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    Positioned.fill(
-                      child: GestureDetector(
-                        onTap: open,
-                        onPanUpdate: (details) {
-                          if (!_busy) {
-                            setState(
-                              () => _shift += Offset(details.delta.dx, 0),
-                            );
-                          }
-                        },
-                        onPanEnd: (_) {
-                          if (_busy) return;
-                          if (_shift.dx > _threshold) {
-                            _decide(top, _Swipe.want);
-                          } else if (_shift.dx < -_threshold) {
-                            _decide(top, _Swipe.hide);
-                          } else {
-                            _animate(Offset.zero);
-                          }
-                        },
-                        child: Transform.translate(
-                          offset: _shift,
-                          child: Transform.rotate(
-                            angle: _shift.dx / 1400,
-                            child: _SwipeCard(
-                              entry: top,
-                              shift: _shift,
-                              onSeen: () => _decide(top, _Swipe.seen),
+                      Positioned.fill(
+                        child: GestureDetector(
+                          onTap: open,
+                          onPanUpdate: (details) {
+                            if (!_busy) {
+                              setState(
+                                () => _shift += Offset(details.delta.dx, 0),
+                              );
+                            }
+                          },
+                          onPanEnd: (_) {
+                            if (_busy) return;
+                            if (_shift.dx > _threshold) {
+                              _decide(top, _Swipe.want);
+                            } else if (_shift.dx < -_threshold) {
+                              _decide(top, _Swipe.hide);
+                            } else {
+                              _animate(Offset.zero);
+                            }
+                          },
+                          child: Transform.translate(
+                            offset: _shift,
+                            child: Transform.rotate(
+                              angle: _shift.dx / 1400,
+                              child: _SwipeCard(
+                                entry: top,
+                                shift: _shift,
+                                onSeen: () => _decide(top, _Swipe.seen),
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 20),

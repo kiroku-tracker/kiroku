@@ -17,11 +17,13 @@ import 'package:kiroku/core/widgets/status_menu.dart';
 import 'package:kiroku/features/library/library_toolbar.dart';
 import 'package:kiroku/data/database/app_database.dart';
 import 'package:kiroku/data/database/library_repository.dart';
+import 'package:kiroku/data/database/settings_repository.dart';
 import 'package:kiroku/data/database/status_action.dart';
 import 'package:kiroku/data/providers.dart';
 import 'package:kiroku/data/shikimori/anime_info.dart';
 import 'package:kiroku/data/shikimori/rate_limiter.dart';
 import 'package:kiroku/data/shikimori/shikimori_client.dart';
+import 'package:kiroku/features/welcome/welcome_state.dart';
 
 const _frieren = AnimeInfo(
   id: 52991,
@@ -286,6 +288,59 @@ void main() {
     await tester.tap(toggle);
     await settle(tester);
     expect(tester.widget<Switch>(toggle).value, isFalse);
+
+    await unmount(tester);
+  });
+
+  test('новые шаги знакомства только после первого знакомства', () {
+    expect(newWelcomeSteps(const {}), isEmpty);
+    expect(
+      newWelcomeSteps({
+        WelcomeStep.library,
+        WelcomeStep.watch,
+        WelcomeStep.episodes,
+        WelcomeStep.discover,
+      }),
+      [WelcomeStep.intro, WelcomeStep.party],
+    );
+  });
+
+  testWidgets('знакомство: выбор сохраняется, шаги отмечаются', (tester) async {
+    await pumpApp(tester);
+    await tester.tap(find.byTooltip('Настройки').first);
+    await settle(tester);
+    await tester.tap(find.text('Знакомство с Kiroku'));
+    await settle(tester);
+    expect(find.text('Привет! Это Kiroku'), findsOneWidget);
+    await tester.tap(find.text('Дальше'));
+    await settle(tester);
+    expect(find.text('Перенести свои аниме'), findsOneWidget);
+
+    await tester.tap(find.text('Дальше'));
+    await settle(tester);
+    await tester.tap(find.text('В браузере'));
+    await settle(tester);
+    await tester.tap(find.text('Дальше'));
+    await settle(tester);
+    await tester.tap(find.text('Когда выйдут все серии'));
+    await settle(tester);
+    expect(find.text('Вышли все серии'), findsOneWidget);
+    for (var i = 0; i < 2; i++) {
+      await tester.tap(find.text('Дальше'));
+      await settle(tester);
+    }
+    await tester.tap(find.text('Готово'));
+    await settle(tester);
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(AppShell)),
+    );
+    final prefs = await container.read(appPrefsProvider.future);
+    expect(prefs.watchInApp, isFalse);
+    expect(prefs.alertPlanned, EpisodeAlertMode.finished);
+    final welcome = await container.read(welcomeProvider.future);
+    expect(welcome.done, WelcomeStep.values.toSet());
+    expect(newWelcomeSteps(welcome.seen), isEmpty);
 
     await unmount(tester);
   });

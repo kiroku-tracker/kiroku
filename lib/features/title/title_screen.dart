@@ -36,6 +36,7 @@ import '../notifications/site_line.dart';
 import '../watch/watch_button.dart';
 import '../watch/watch_next_button.dart';
 import 'views_menu.dart';
+import '../welcome/one_time_tip.dart';
 import 'episodes_panel.dart';
 import 'history_panel.dart';
 import 'note_panel.dart';
@@ -160,7 +161,15 @@ class _TitleScreenState extends ConsumerState<TitleScreen> {
                       .setFavorite(anime.id, !entry.favorite),
                 ),
                 const SizedBox(width: 4),
-                TitleAlertsButton(anime: anime, entry: entry),
+                OneTimeTip(
+                  id: 'title-alerts',
+                  text:
+                      'Уведомления этого тайтла: когда сообщать и какой '
+                      'перевод ждать',
+                  targetAnchor: Alignment.bottomRight,
+                  followerAnchor: Alignment.topRight,
+                  child: TitleAlertsButton(anime: anime, entry: entry),
+                ),
               ],
               if (anime != null)
                 _MoreMenu(

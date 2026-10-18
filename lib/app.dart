@@ -10,6 +10,7 @@ import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'core/toast.dart';
 import 'core/widgets/app_menu_anchor.dart';
+import 'data/providers.dart';
 import 'features/calendar/calendar_screen.dart';
 import 'features/discover/discover_screen.dart';
 import 'features/journal/journal_screen.dart';
@@ -21,6 +22,8 @@ import 'features/player/player_session.dart';
 import 'features/search/search_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/updates/update_dialog.dart';
+import 'features/welcome/welcome_dialog.dart';
+import 'features/welcome/welcome_state.dart';
 import 'system/backups.dart';
 import 'system/desktop.dart';
 import 'system/updates.dart';
@@ -58,7 +61,13 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   void initState() {
     super.initState();
-    if (widget.desktop) ref.read(desktopControllerProvider).start();
+    if (widget.desktop) {
+      ref.read(desktopControllerProvider).start();
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final welcome = await ref.read(welcomeProvider.future);
+        if (welcome.seen.isEmpty && mounted) await showWelcome(context);
+      });
+    }
     if (Backups.restoredAtStart) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => ref
@@ -231,6 +240,7 @@ class _Sidebar extends ConsumerWidget {
               onTap: () => open(section),
             ),
           const Spacer(),
+          const _WelcomeNews(),
           const _UpdateButton(),
           _SidebarItem(
             icon: LucideIcons.settings,
@@ -240,6 +250,41 @@ class _Sidebar extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Значок знакомства: продолжить его или открыть шаги, которые появились
+/// после прошлого раза.
+class _WelcomeNews extends ConsumerWidget {
+  const _WelcomeNews();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final progress = ref.watch(welcomeProvider).value;
+    final owned = ref.watch(libraryItemsProvider).value?.length ?? 0;
+    if (progress == null || progress.seen.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final fresh = newWelcomeSteps(progress.seen);
+    if (fresh.isNotEmpty) {
+      return _SidebarItem(
+        icon: LucideIcons.sparkles,
+        label: 'Новое в Kiroku: ${fresh.length}',
+        active: false,
+        dot: true,
+        onTap: () => showWelcome(context, onlyNew: true),
+      );
+    }
+    if (!welcomeUnfinished(progress, owned: owned)) {
+      return const SizedBox.shrink();
+    }
+    return _SidebarItem(
+      icon: LucideIcons.listChecks,
+      label: 'Продолжить знакомство с Kiroku',
+      active: false,
+      dot: true,
+      onTap: () => showWelcome(context),
     );
   }
 }

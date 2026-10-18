@@ -20,6 +20,7 @@ import '../autotrack/auto_marker.dart';
 import '../import/shikimori_import.dart';
 import '../party/party_address.dart';
 import '../updates/update_dialog.dart';
+import '../welcome/welcome_dialog.dart';
 import 'data_transfer.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -109,15 +110,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         children: [
           PageHeader(
             title: 'Настройки',
-            trailing: version == null
-                ? null
-                : Text(
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextButton.icon(
+                  onPressed: () => showWelcome(context),
+                  icon: const Icon(LucideIcons.sparkles, size: 16),
+                  label: const Text('Знакомство с Kiroku'),
+                ),
+                if (version != null) ...[
+                  const SizedBox(width: 12),
+                  Text(
                     'Версия $version',
                     style: TextStyle(
                       color: AppColors.muted.withValues(alpha: 0.6),
                       fontSize: 13,
                     ),
                   ),
+                ],
+              ],
+            ),
           ),
           const SizedBox(height: 16),
           Panel(

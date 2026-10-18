@@ -30,6 +30,7 @@ import 'library_header.dart';
 import 'library_table.dart';
 import 'library_toolbar.dart';
 import '../watch/watch_next_button.dart';
+import '../welcome/one_time_tip.dart';
 
 class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
@@ -192,14 +193,20 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                         ),
                         if (tab == WatchStatus.planned) ...[
                           const SizedBox(height: 10),
-                          PlannedTabs(
-                            current: prefs.planned,
-                            counts: plannedCounts(all),
-                            onChanged: (filter) => ref
-                                .read(libraryPrefsProvider.notifier)
-                                .change(
-                                  (prefs) => prefs.copyWith(planned: filter),
-                                ),
+                          OneTimeTip(
+                            id: 'planned-tabs',
+                            text:
+                                'Доступно: вышло целиком. Выходит: серии идут '
+                                'сейчас. Не вышло: анонсы',
+                            child: PlannedTabs(
+                              current: prefs.planned,
+                              counts: plannedCounts(all),
+                              onChanged: (filter) => ref
+                                  .read(libraryPrefsProvider.notifier)
+                                  .change(
+                                    (prefs) => prefs.copyWith(planned: filter),
+                                  ),
+                            ),
                           ),
                         ],
                         const SizedBox(height: 14),
@@ -237,7 +244,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                           ),
                           itemCount: visible.length,
                           itemBuilder: (context, index) =>
-                              switch (visible[index]) {
+                              _cardTip(index, switch (visible[index]) {
                                 final TitleUnit unit => LibraryTitleCard(
                                   item: unit.item,
                                   franchiseName: unit.franchiseName,
@@ -248,7 +255,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                                   backLabel: 'Назад в библиотеку',
                                   group: group,
                                 ),
-                              },
+                              }),
                         ),
                 ),
               ],
@@ -458,3 +465,15 @@ String? _plannedLabel(Anime anime) {
       : 'Вышло ${release.aired}';
   return soon == null ? aired : '$aired · следующая $soon';
 }
+
+/// Подсказка про правый клик у первой карточки.
+Widget _cardTip(int index, Widget card) => index != 0
+    ? card
+    : OneTimeTip(
+        id: 'card-menu',
+        text: 'Правый клик по карточке: отметить серию и другие действия',
+        targetAnchor: Alignment.topRight,
+        followerAnchor: Alignment.topLeft,
+        offset: const Offset(12, 60),
+        child: card,
+      );
