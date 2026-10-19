@@ -8,6 +8,7 @@ import '../../app_section.dart';
 import '../../core/labels.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/toast.dart';
+import '../../core/widgets/poster.dart';
 import '../../data/database/app_database.dart';
 import '../../data/database/settings_repository.dart';
 import '../../data/database/watch_status.dart';
@@ -147,6 +148,7 @@ class _WelcomeDialogState extends ConsumerState<WelcomeDialog> {
                             ref.read(searchFocusProvider.notifier).request();
                           },
                         ),
+                        WelcomeStep.posters => const _PostersStep(),
                         WelcomeStep.watch => const _WatchStep(),
                         WelcomeStep.episodes => const _EpisodesStep(),
                         WelcomeStep.discover => _DiscoverStep(
@@ -155,6 +157,7 @@ class _WelcomeDialogState extends ConsumerState<WelcomeDialog> {
                         WelcomeStep.party => _PartyStep(
                           onOpen: () => _open(AppSection.party),
                         ),
+                        WelcomeStep.discord => const _DiscordStep(),
                       },
                     ),
                   ),
@@ -242,14 +245,22 @@ class _StepList extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            for (final (index, step) in steps.indexed)
-              _StepRow(
-                step: step,
-                active: index == current,
-                done: done(step),
-                onTap: () => onSelect(index),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    for (final (index, step) in steps.indexed)
+                      _StepRow(
+                        step: step,
+                        active: index == current,
+                        done: done(step),
+                        onTap: () => onSelect(index),
+                      ),
+                  ],
+                ),
               ),
-            const Spacer(),
+            ),
+            const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Text(
@@ -539,6 +550,46 @@ class _LibraryStep extends StatelessWidget {
   }
 }
 
+class _PostersStep extends ConsumerWidget {
+  const _PostersStep();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final originals =
+        ref.watch(appPrefsProvider).value?.posterOriginals ?? false;
+    void choose(bool value) => ref
+        .read(appPrefsProvider.notifier)
+        .change((prefs) => prefs.copyWith(posterOriginals: value));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _StepHeader(
+          title: 'Чёткие постеры',
+          text:
+              'Постеры бывают обычные и в полном размере. Разница заметна '
+              'на крупных карточках и большом мониторе',
+        ),
+        _Choices(
+          children: [
+            _ChoiceCard(
+              title: 'Обычные',
+              text: 'Загружаются быстрее',
+              selected: !originals,
+              onTap: () => choose(false),
+            ),
+            _ChoiceCard(
+              title: 'В полном размере',
+              text: 'Чётче, но первая загрузка дольше',
+              selected: originals,
+              onTap: () => choose(true),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
 class _WatchStep extends ConsumerWidget {
   const _WatchStep();
 
@@ -794,6 +845,158 @@ class _PartyStep extends StatelessWidget {
           label: const Text('Открыть совместный просмотр'),
         ),
       ],
+    );
+  }
+}
+
+class _DiscordStep extends ConsumerWidget {
+  const _DiscordStep();
+
+  /// Пример для пустой библиотеки.
+  static const _frieren = (
+    title: 'Провожающая в последний путь Фрирен',
+    poster:
+        'https://shikimori.io/uploads/poster/animes/52991/'
+        'main_2x-83b82e9ff64f1b0821239f88ab8651ab.webp',
+    episodes: 28,
+  );
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final shown = ref.watch(appPrefsProvider).value?.discord ?? false;
+    final items = ref.watch(libraryItemsProvider).value ?? const [];
+    final anime =
+        (items
+                    .where((item) => item.status == WatchStatus.watching)
+                    .firstOrNull ??
+                items.firstOrNull)
+            ?.anime;
+    void choose(bool value) => ref
+        .read(appPrefsProvider.notifier)
+        .change((prefs) => prefs.copyWith(discord: value));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _StepHeader(
+          title: 'Статус в Discord',
+          text:
+              'Kiroku может показывать друзьям в Discord, что ты сейчас '
+              'смотришь',
+        ),
+        _Choices(
+          children: [
+            _ChoiceCard(
+              title: 'Показывать',
+              text: 'Название и серия, пока идёт видео',
+              selected: shown,
+              onTap: () => choose(true),
+            ),
+            _ChoiceCard(
+              title: 'Не показывать',
+              text: 'Друзья не увидят, что ты смотришь',
+              selected: !shown,
+              onTap: () => choose(false),
+            ),
+          ],
+        ),
+        if (shown) ...[
+          const SizedBox(height: 16),
+          _DiscordPreview(
+            title: anime?.title ?? _frieren.title,
+            poster: anime == null ? _frieren.poster : anime.posterUrl,
+            total: anime?.episodes ?? _frieren.episodes,
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Отдельный тайтл, франшизу или группу можно скрыть в меню «…» '
+            'на их странице',
+            style: TextStyle(color: AppColors.muted, fontSize: 13),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Пример статуса в Discord.
+class _DiscordPreview extends StatelessWidget {
+  const _DiscordPreview({
+    required this.title,
+    required this.poster,
+    required this.total,
+  });
+
+  final String title;
+  final String? poster;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final episode = total > 0 && total < 8 ? total : 8;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: AppColors.panel,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.panelBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Смотрит Kiroku',
+                  style: TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Text(
+                'пример',
+                style: TextStyle(color: AppColors.muted, fontSize: 12),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              SizedBox(
+                width: 44,
+                child: Poster(
+                  url: poster,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      total > 0 ? 'Серия $episode из $total' : 'Серия $episode',
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

@@ -9,10 +9,12 @@ import '../../data/providers.dart';
 enum WelcomeStep {
   intro('Что такое Kiroku', LucideIcons.sparkles),
   library('Свои аниме', LucideIcons.library),
+  posters('Постеры', LucideIcons.image),
   watch('Где смотреть', LucideIcons.circlePlay),
   episodes('Новые серии', LucideIcons.bell),
   discover('Что посмотреть', LucideIcons.compass),
-  party('Смотреть вместе', LucideIcons.users, optional: true);
+  party('Смотреть вместе', LucideIcons.users, optional: true),
+  discord('Discord', LucideIcons.gamepad2, optional: true);
 
   const WelcomeStep(this.title, this.icon, {this.optional = false});
 

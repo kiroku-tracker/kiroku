@@ -301,7 +301,12 @@ void main() {
         WelcomeStep.episodes,
         WelcomeStep.discover,
       }),
-      [WelcomeStep.intro, WelcomeStep.party],
+      [
+        WelcomeStep.intro,
+        WelcomeStep.posters,
+        WelcomeStep.party,
+        WelcomeStep.discord,
+      ],
     );
   });
 
@@ -318,6 +323,10 @@ void main() {
 
     await tester.tap(find.text('Дальше'));
     await settle(tester);
+    await tester.tap(find.text('В полном размере'));
+    await settle(tester);
+    await tester.tap(find.text('Дальше'));
+    await settle(tester);
     await tester.tap(find.text('В браузере'));
     await settle(tester);
     await tester.tap(find.text('Дальше'));
@@ -325,10 +334,15 @@ void main() {
     await tester.tap(find.text('Когда выйдут все серии'));
     await settle(tester);
     expect(find.text('Вышли все серии'), findsOneWidget);
-    for (var i = 0; i < 2; i++) {
+    for (var i = 0; i < 3; i++) {
       await tester.tap(find.text('Дальше'));
       await settle(tester);
     }
+    await tester.tap(find.text('Показывать'));
+    await settle(tester);
+    expect(find.text('Смотрит Kiroku'), findsOneWidget);
+    expect(find.text('Провожающая в последний путь Фрирен'), findsOneWidget);
+    expect(find.text('Серия 8 из 28'), findsOneWidget);
     await tester.tap(find.text('Готово'));
     await settle(tester);
 
@@ -338,6 +352,8 @@ void main() {
     final prefs = await container.read(appPrefsProvider.future);
     expect(prefs.watchInApp, isFalse);
     expect(prefs.alertPlanned, EpisodeAlertMode.finished);
+    expect(prefs.posterOriginals, isTrue);
+    expect(prefs.discord, isTrue);
     final welcome = await container.read(welcomeProvider.future);
     expect(welcome.done, WelcomeStep.values.toSet());
     expect(newWelcomeSteps(welcome.seen), isEmpty);
