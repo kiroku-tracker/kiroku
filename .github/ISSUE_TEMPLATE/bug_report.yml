@@ -1,0 +1,40 @@
+name: Ошибка
+description: Что-то работает не так
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: Что случилось
+      description: Опиши, что пошло не так
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Как повторить
+      placeholder: |
+        1. Открыть …
+        2. Нажать …
+  - type: textarea
+    id: expected
+    attributes:
+      label: Как должно быть
+  - type: input
+    id: version
+    attributes:
+      label: Версия Kiroku
+      description: Видна в настройках, справа вверху
+      placeholder: 0.5.1
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows
+      placeholder: Windows 11
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Скриншоты
+      description: Картинку можно перетащить сюда

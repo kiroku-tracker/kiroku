@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/confirm_dialog.dart';
@@ -22,6 +23,7 @@ import '../party/party_address.dart';
 import '../updates/update_dialog.dart';
 import '../welcome/welcome_dialog.dart';
 import 'data_transfer.dart';
+import 'feedback_links.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -433,6 +435,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               text: 'О новой версии сообщит кнопка в боковом меню',
               value: prefs.checkUpdates,
               onChanged: _setCheckUpdates,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Panel(
+            title: 'Обратная связь',
+            child: Column(
+              children: [
+                ChoiceRow(
+                  title: 'Ошибка в программе',
+                  text: 'Форма на GitHub, нужен аккаунт',
+                  control: OutlinedButton.icon(
+                    onPressed: () => launchUrl(
+                      bugReportUri(version),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                    icon: const Icon(LucideIcons.bug),
+                    label: const Text('Сообщить…'),
+                  ),
+                ),
+                ChoiceRow(
+                  title: 'Идея или пожелание',
+                  control: OutlinedButton.icon(
+                    onPressed: () => launchUrl(
+                      ideaUri(),
+                      mode: LaunchMode.externalApplication,
+                    ),
+                    icon: const Icon(LucideIcons.lightbulb),
+                    label: const Text('Предложить…'),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
