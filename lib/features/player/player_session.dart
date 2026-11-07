@@ -11,6 +11,7 @@ import 'package:window_manager/window_manager.dart';
 import '../../app_section.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/providers.dart';
+import '../../system/cursor.dart';
 import '../../system/full_screen.dart';
 import '../autotrack/auto_marker.dart';
 import 'frame_reports.dart';
@@ -108,6 +109,8 @@ class PlayerSession extends ChangeNotifier {
   bool _chosen = false;
   bool _closed = false;
   Timer? _coverTimer;
+  Timer? _cursorTimer;
+  Timer? _idleTimer;
   String? _videoFrame;
   DateTime? _toggledAt;
   DateTime? _modesSentAt;
@@ -280,6 +283,10 @@ class PlayerSession extends ChangeNotifier {
       unawaited(_setFullScreen(message['full'] == true));
       return;
     }
+    if (message is Map && message['kiroku'] == 7) {
+      _onCursor(message['hide'] == true);
+      return;
+    }
     if (message is Map && message['kiroku'] == 6) {
       final type = message['event'];
       _events.add((
@@ -371,6 +378,59 @@ class PlayerSession extends ChangeNotifier {
         DateTime.now().difference(ended) < const Duration(milliseconds: 500);
   }
 
+  bool _cursorHidden = false;
+  bool _pageHidesCursor = false;
+  bool _pointerInside = false;
+  DateTime? _pointerMovedAt;
+
+  /// Плеер на странице спрятал курсор; без повтора раз в секунду забывается.
+  void _onCursor(bool hide) {
+    _cursorTimer?.cancel();
+    if (hide) {
+      _cursorTimer = Timer(
+        const Duration(seconds: 2),
+        () => _onCursor(false),
+      );
+    }
+    _pageHidesCursor = hide;
+    _updateCursor();
+  }
+
+  /// Мышь двинулась над видео: курсор виден сразу.
+  void pointerMoved() {
+    _pointerInside = true;
+    _pointerMovedAt = DateTime.now();
+    _idleTimer?.cancel();
+    _idleTimer = Timer(const Duration(milliseconds: 1500), _updateCursor);
+    _updateCursor();
+  }
+
+  /// Мышь ушла с видео.
+  void pointerLeft() {
+    _pointerInside = false;
+    _updateCursor();
+  }
+
+  /// Курсор скрыт, если мышь над идущим видео, плеер спрятал курсор и мышь
+  /// в покое 1,5 с. Windows сама показывает его при движении мыши.
+  void _updateCursor() {
+    final moved = _pointerMovedAt;
+    final hide =
+        _pointerInside &&
+        !_closed &&
+        _pageHidesCursor &&
+        !(video?.paused ?? true) &&
+        (moved == null ||
+            DateTime.now().difference(moved) >=
+                const Duration(milliseconds: 1500));
+    if (hide) {
+      SystemCursor.hide();
+    } else if (_cursorHidden) {
+      unawaited(windowManager.getId().then(SystemCursor.restore));
+    }
+    _cursorHidden = hide;
+  }
+
   Future<void> _exitPageFullScreen() async {
     await controller.executeScript(
       'document.fullscreenElement && document.exitFullscreen()',
@@ -386,6 +446,7 @@ class PlayerSession extends ChangeNotifier {
   /// Страница просмотра закрыта, видео остаётся в мини-окне.
   void leavePage() {
     route = null;
+    pointerLeft();
     if (fullScreen) {
       unawaited(_setFullScreen(false));
       unawaited(_exitPageFullScreen());
@@ -395,6 +456,7 @@ class PlayerSession extends ChangeNotifier {
 
   /// Закрывает просмотр совсем.
   void close() {
+    pointerLeft();
     if (fullScreen) {
       fullScreen = false;
       _ref.read(playerFullScreenProvider.notifier).set(false);
@@ -404,6 +466,8 @@ class PlayerSession extends ChangeNotifier {
     for (final subscription in _subscriptions) {
       subscription.cancel();
     }
+    _cursorTimer?.cancel();
+    _idleTimer?.cancel();
     _coverTimer?.cancel();
     _marker.reportEmbedded(null);
     unawaited(_events.close());

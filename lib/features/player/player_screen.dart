@@ -116,7 +116,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             borderRadius: BorderRadius.circular(framed ? 12 : 0),
             child: Stack(
               children: [
-                Webview(session.controller),
+                MouseRegion(
+                  opaque: false,
+                  onExit: (_) => session.pointerLeft(),
+                  child: Listener(
+                    onPointerHover: (_) => session.pointerMoved(),
+                    onPointerMove: (_) => session.pointerMoved(),
+                    onPointerDown: (_) => session.pointerMoved(),
+                    child: Webview(session.controller),
+                  ),
+                ),
                 if (session.cover && session.focus)
                   const Positioned.fill(
                     child: ColoredBox(

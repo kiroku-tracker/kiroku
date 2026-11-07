@@ -51,6 +51,9 @@ const siteScript = r'''
       'html.kiroku-spoilers img,html.kiroku-spoilers video{opacity:0!important}' +
       (/kodik/.test(location.hostname)
         ? '.share_button,.fp-share_button,#get_code_window{display:none!important}'
+        : '') +
+      (/alloha/.test(location.hostname)
+        ? '.allplay--hide-controls,.allplay--hide-controls *{cursor:none!important}'
         : '');
     function refresh() {
       var videos = document.querySelectorAll('video');
@@ -149,13 +152,38 @@ const siteScript = r'''
       }
       forward(data);
     });
+    var pointer = null;
+    var cursorHidden = false;
+    var cursorSent = 0;
+    function checkCursor() {
+      var hide = false;
+      if (pointer) {
+        var el = document.elementFromPoint(pointer.x, pointer.y);
+        hide = !!el && el.tagName !== 'IFRAME' && getComputedStyle(el).cursor === 'none';
+      }
+      if (hide === cursorHidden && !(hide && Date.now() - cursorSent > 1000)) return;
+      cursorHidden = hide;
+      cursorSent = Date.now();
+      send({ kiroku: 7, hide: hide, url: location.href });
+    }
+    document.addEventListener('mousemove', function (e) {
+      pointer = { x: e.clientX, y: e.clientY };
+      setTimeout(checkCursor, 0);
+    }, true);
+    window.addEventListener('mouseout', function (e) {
+      if (e.relatedTarget) return;
+      pointer = null;
+      checkCursor();
+    }, true);
+    setInterval(checkCursor, 250);
     setInterval(refresh, 300);
     refresh();
   }
 
   if (top) {
     window.addEventListener('message', function (e) {
-      if (e.data && (e.data.kiroku === 1 || e.data.kiroku === 6)) send(e.data);
+      if (e.data && (e.data.kiroku === 1 || e.data.kiroku === 6 ||
+          e.data.kiroku === 7)) send(e.data);
     });
     document.addEventListener('fullscreenchange', function () {
       send({ kiroku: 4, full: !!document.fullscreenElement });
