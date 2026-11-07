@@ -90,7 +90,10 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   Widget build(BuildContext context) {
     final section = ref.watch(appSectionProvider);
-    void back() => sectionNavigatorKeys[section]?.currentState?.maybePop();
+    void back() {
+      if (ref.read(playerSessionProvider)?.exitFullScreen() ?? false) return;
+      sectionNavigatorKeys[section]?.currentState?.maybePop();
+    }
     void open(AppSection section) =>
         ref.read(appSectionProvider.notifier).open(section);
     return Scaffold(body: ToastHost(child: _shortcuts(back, open)));

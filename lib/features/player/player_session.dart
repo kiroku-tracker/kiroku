@@ -351,9 +351,24 @@ class PlayerSession extends ChangeNotifier {
       return;
     }
     fullScreen = value;
+    if (!value) _fullScreenEndedAt = DateTime.now();
     _ref.read(playerFullScreenProvider.notifier).set(value);
     _notify();
     FullScreen.set(await windowManager.getId(), value);
+  }
+
+  DateTime? _fullScreenEndedAt;
+
+  /// Выход из полного экрана; true, если видео на весь экран или только что было.
+  bool exitFullScreen() {
+    if (fullScreen) {
+      unawaited(_setFullScreen(false));
+      unawaited(_exitPageFullScreen());
+      return true;
+    }
+    final ended = _fullScreenEndedAt;
+    return ended != null &&
+        DateTime.now().difference(ended) < const Duration(milliseconds: 500);
   }
 
   Future<void> _exitPageFullScreen() async {
