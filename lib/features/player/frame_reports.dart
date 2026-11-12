@@ -9,6 +9,7 @@ class FrameVideo {
     required this.muted,
     this.ready = true,
     this.rate = 1,
+    this.ended = false,
   });
 
   factory FrameVideo.fromMap(Map<Object?, Object?> map) => FrameVideo(
@@ -18,6 +19,7 @@ class FrameVideo {
     muted: map['muted'] == true,
     ready: map['ready'] != false,
     rate: (map['rate'] as num?)?.toDouble() ?? 1,
+    ended: map['ended'] == true,
   );
 
   final double time;
@@ -29,6 +31,12 @@ class FrameVideo {
 
   /// Скорость воспроизведения.
   final double rate;
+
+  final bool ended;
+
+  /// Серия закончилась.
+  bool get finished =>
+      ended || (paused && duration > 0 && time >= duration - 1);
 }
 
 /// Сообщение скрипта из страницы или фрейма.

@@ -9,6 +9,7 @@ import 'package:webview_windows/webview_windows.dart';
 import '../../app_section.dart';
 import '../../core/theme/app_colors.dart';
 import '../party/party_chip.dart';
+import 'player_next.dart';
 import 'player_session.dart';
 import 'site_controls.dart';
 
@@ -126,6 +127,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                     child: Webview(session.controller),
                   ),
                 ),
+                if (session.showNext && !session.cover)
+                  Positioned(
+                    right: 24,
+                    bottom: 72,
+                    child: PlayerNextCard(session: session),
+                  ),
                 if (session.cover && session.focus)
                   const Positioned.fill(
                     child: ColoredBox(

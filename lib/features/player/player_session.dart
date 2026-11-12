@@ -91,6 +91,20 @@ class PlayerSession extends ChangeNotifier {
 
   FrameVideo? video;
 
+  /// Серия закончилась.
+  bool videoEnded = false;
+
+  bool _nextHidden = false;
+
+  /// Показывать кнопку следующего сезона или части.
+  bool get showNext => videoEnded && !_nextHidden;
+
+  /// Закрывает кнопку до продолжения видео.
+  void hideNext() {
+    _nextHidden = true;
+    _notify();
+  }
+
   /// Когда пришёл отчёт о [video].
   DateTime? videoAt;
 
@@ -221,6 +235,8 @@ class PlayerSession extends ChangeNotifier {
   /// Выбирает озвучку, плеер и серию кнопками сайта.
   void choose(SiteChoice choice) {
     site = choice;
+    videoEnded = false;
+    _nextHidden = false;
     _notify();
     final want = jsonEncode({
       'dubbing': choice.dubbing,
@@ -307,6 +323,12 @@ class PlayerSession extends ChangeNotifier {
     final main = mainVideo(_reports.values, now: now);
     video = main?.video;
     videoAt = main?.frame.at;
+    final current = main?.video;
+    if (current != null && current.finished != videoEnded) {
+      videoEnded = current.finished;
+      if (!videoEnded) _nextHidden = false;
+      _notify();
+    }
     final embedded = embeddedSession(_reports.values, now: now);
     _marker.reportEmbedded(embedded);
     if (embedded == null) return;
@@ -387,10 +409,7 @@ class PlayerSession extends ChangeNotifier {
   void _onCursor(bool hide) {
     _cursorTimer?.cancel();
     if (hide) {
-      _cursorTimer = Timer(
-        const Duration(seconds: 2),
-        () => _onCursor(false),
-      );
+      _cursorTimer = Timer(const Duration(seconds: 2), () => _onCursor(false));
     }
     _pageHidesCursor = hide;
     _updateCursor();

@@ -394,7 +394,8 @@ const siteScript = r'''
         paused: v.paused,
         muted: v.muted,
         rate: v.playbackRate,
-        ready: v.readyState >= 3
+        ready: v.readyState >= 3,
+        ended: v.ended
       };
     });
     send({ kiroku: 1, url: location.href, title: document.title, top: top, videos: videos });
