@@ -93,6 +93,7 @@ class AutoMarker {
     }
     var seen = false;
     for (final session in sessions) {
+      final inApp = identical(session, embedded);
       final now = recognizeYummy(session);
       if (now == null || session.duration < _minDuration) continue;
       final key = '${session.app}|${session.title}';
@@ -126,7 +127,7 @@ class AutoMarker {
       } catch (_) {}
       if (prefs.autoMark && animeId != null && session.playing) {
         if (prefs.autoAdd) {
-          await _addOnStart(animeId, recognized.title);
+          await _addOnStart(animeId, inApp: inApp);
         }
         unawaited(_learnDubbing(animeId, recognized.player));
       }
@@ -147,14 +148,14 @@ class AutoMarker {
         continue;
       }
       try {
-        await _onWatched(recognized);
+        await _onWatched(recognized, inApp: inApp);
       } catch (_) {}
     }
     if (!seen) _ref.read(nowPlayingProvider.notifier).set(null);
   }
 
   /// Добавляет тайтл в начале просмотра.
-  Future<void> _addOnStart(int animeId, String title) async {
+  Future<void> _addOnStart(int animeId, {required bool inApp}) async {
     if (!_added.add(animeId)) return;
     try {
       final library = _ref.read(libraryRepositoryProvider);
@@ -164,20 +165,19 @@ class AutoMarker {
       final change = await library.add(info, StatusAction.watching);
       final token = '${_nextToken++}';
       _undos[token] = change.undo;
-      await _notifications.show(
+      await _tell(
+        inApp: inApp,
+        animeId: animeId,
         title: 'Добавлено в «Смотрю»',
         body: '«${info.title}»',
-        command: 'title:$animeId',
-        buttons: [
-          NotificationButton(command: 'undo:$token', label: 'Отменить'),
-        ],
+        button: _undo(token),
       );
     } catch (_) {
       _added.remove(animeId);
     }
   }
 
-  Future<void> _onWatched(Recognized recognized) async {
+  Future<void> _onWatched(Recognized recognized, {required bool inApp}) async {
     final episode = recognized.episode;
     final id = recognized.shikimoriId ?? await _idBySlug(recognized.slug);
     final key = id != null && episode != null
@@ -193,16 +193,15 @@ class AutoMarker {
 
     if (item == null) {
       if (id == null || episode == null) return;
-      await _notifications.show(
+      await _tell(
+        inApp: inApp,
+        animeId: id,
         title: 'Добавить в Kiroku?',
         body: '«${recognized.title}» · досмотрена $episode-я серия',
-        command: 'title:$id',
-        buttons: [
-          NotificationButton(
-            command: 'track:$id:$episode',
-            label: 'Добавить и отметить',
-          ),
-        ],
+        button: NotificationButton(
+          command: 'track:$id:$episode',
+          label: 'Добавить и отметить',
+        ),
       );
       return;
     }
@@ -210,20 +209,27 @@ class AutoMarker {
     final animeId = item.anime.id;
     if (episode == null) {
       final next = item.progress.nextEpisode;
-      await _notifications.show(
+      await _tell(
+        inApp: inApp,
+        animeId: animeId,
         title: 'Отметить $next-ю серию?',
         body: '«${item.anime.title}»: похоже, серия досмотрена',
-        command: 'title:$animeId',
-        buttons: [
-          NotificationButton(command: 'mark:$animeId:$next', label: 'Отметить'),
-        ],
+        button: NotificationButton(
+          command: 'mark:$animeId:$next',
+          label: 'Отметить',
+        ),
       );
       return;
     }
-    await _mark(item.anime, episode, source: 'auto');
+    await _mark(item.anime, episode, source: 'auto', inApp: inApp);
   }
 
-  Future<void> _mark(Anime anime, int episode, {String? source}) async {
+  Future<void> _mark(
+    Anime anime,
+    int episode, {
+    String? source,
+    bool inApp = false,
+  }) async {
     final library = _ref.read(libraryRepositoryProvider);
     final entry = await library.watchEntry(anime.id).first;
     if (entry == null) return;
@@ -256,13 +262,36 @@ class AutoMarker {
     }
     final token = '${_nextToken++}';
     _undos[token] = undo;
-    await _notifications.show(
+    await _tell(
+      inApp: inApp,
+      animeId: anime.id,
       title: change.finished
           ? 'Отмечена $episode-я серия, тайтл просмотрен'
           : 'Отмечена $episode-я серия',
       body: '«${anime.title}»$note',
-      command: 'title:${anime.id}',
-      buttons: [NotificationButton(command: 'undo:$token', label: 'Отменить')],
+      button: _undo(token),
+    );
+  }
+
+  /// Кнопка «Отменить».
+  NotificationButton _undo(String token) =>
+      NotificationButton(command: 'undo:$token', label: 'Отменить');
+
+  /// Уведомление об автоотметке без звука вне плеера Kiroku.
+  Future<void> _tell({
+    required bool inApp,
+    required int animeId,
+    required String title,
+    required String body,
+    required NotificationButton button,
+  }) async {
+    if (inApp) return;
+    await _notifications.show(
+      title: title,
+      body: body,
+      command: 'title:$animeId',
+      buttons: [button],
+      silent: true,
     );
   }
 
@@ -284,7 +313,11 @@ class AutoMarker {
         final undo = _undos.remove(token);
         if (undo != null) {
           await undo();
-          await _notifications.show(title: 'Отменено', body: 'Всё как было');
+          await _notifications.show(
+            title: 'Отменено',
+            body: 'Всё как было',
+            silent: true,
+          );
         }
         return true;
       case ['mark', final id, final episode]:

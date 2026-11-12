@@ -63,6 +63,7 @@ class NotificationService {
     required String body,
     String? command,
     List<NotificationButton> buttons = const [],
+    bool silent = false,
   }) async {
     if (!_ready) return;
     await _plugin.show(
@@ -76,6 +77,7 @@ class NotificationService {
             for (final button in buttons)
               WindowsAction(content: button.label, arguments: button.command),
           ],
+          audio: silent ? WindowsNotificationAudio.silent() : null,
         ),
       ),
     );
