@@ -159,36 +159,79 @@ class _UpdateDialogState extends ConsumerState<UpdateDialog> {
   }
 }
 
-class _Notes extends StatelessWidget {
+class _Notes extends StatefulWidget {
   const _Notes({required this.notes});
 
   final List<ReleaseNote> notes;
 
   @override
+  State<_Notes> createState() => _NotesState();
+}
+
+class _NotesState extends State<_Notes> {
+  static const _style = TextStyle(color: AppColors.textSecondary, height: 1.45);
+
+  var _minorOpen = false;
+
+  Widget _line(ReleaseNote note) => Padding(
+    padding: const EdgeInsets.only(bottom: 6),
+    child: note.bullet
+        ? Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(width: 18, child: Text('•', style: _style)),
+              Expanded(child: Text(note.text, style: _style)),
+            ],
+          )
+        : Text(note.text, style: _style),
+  );
+
+  Widget _minorHeading(ReleaseNote note) => Align(
+    alignment: Alignment.centerLeft,
+    child: InkWell(
+      onTap: () => setState(() => _minorOpen = !_minorOpen),
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 6, bottom: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              note.text,
+              style: _style.copyWith(
+                color: AppColors.muted,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              _minorOpen ? LucideIcons.chevronUp : LucideIcons.chevronDown,
+              size: 15,
+              color: AppColors.muted,
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  @override
   Widget build(BuildContext context) {
+    final notes = widget.notes;
     if (notes.isEmpty) {
       return const Text(
         'Описания нет.',
         style: TextStyle(color: AppColors.muted),
       );
     }
-    const style = TextStyle(color: AppColors.textSecondary, height: 1.45);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         for (final note in notes)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: note.bullet
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(width: 18, child: Text('•', style: style)),
-                      Expanded(child: Text(note.text, style: style)),
-                    ],
-                  )
-                : Text(note.text, style: style),
-          ),
+          if (note.heading)
+            _minorHeading(note)
+          else if (!note.minor || _minorOpen)
+            _line(note),
       ],
     );
   }

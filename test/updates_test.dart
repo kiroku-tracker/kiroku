@@ -43,10 +43,41 @@ void main() {
       'Спасибо за отзывы\r\n',
     );
     expect(notes, [
-      (text: 'Добавлен экспорт', bullet: true),
-      (text: 'Изменён поиск', bullet: true),
-      (text: 'Спасибо за отзывы', bullet: false),
+      (text: 'Добавлен экспорт', bullet: true, heading: false, minor: false),
+      (text: 'Изменён поиск', bullet: true, heading: false, minor: false),
+      (text: 'Спасибо за отзывы', bullet: false, heading: false, minor: false),
     ]);
+  });
+
+  test('небольшие изменения отделены от остальных', () {
+    final notes = parseReleaseNotes(
+      '* Добавлен экспорт\n'
+      '* Изменён поиск\n'
+      '### Небольшие изменения\n'
+      '* Другой цвет кнопки\n'
+      '* Новая подсказка\n',
+    );
+    expect(
+      [for (final note in notes.where((note) => note.minor)) note.text],
+      ['Небольшие изменения', 'Другой цвет кнопки', 'Новая подсказка'],
+    );
+    expect(notes.where((note) => note.heading).length, 1);
+    expect(notes.first.minor, isFalse);
+  });
+
+  test('блок мелких изменений кончается на следующем заголовке', () {
+    final notes = parseReleaseNotes(
+      '### Небольшие изменения\n'
+      '* Мелочь\n'
+      '### Другое\n'
+      '* Лишнее\n',
+    );
+    expect(notes.firstWhere((note) => note.text == 'Лишнее').minor, isFalse);
+  });
+
+  test('номер версии и прочие заголовки не попадают в список', () {
+    final notes = parseReleaseNotes('## 1.2.0\n### Добавлено\n* Экспорт\n');
+    expect(notes.map((note) => note.text), ['Экспорт']);
   });
 
   test('список версий', () {

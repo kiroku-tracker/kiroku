@@ -48,8 +48,9 @@ class AppVersion implements Comparable<AppVersion> {
   String toString() => '$major.$minor.$patch';
 }
 
-/// Строка описания версии.
-typedef ReleaseNote = ({String text, bool bullet});
+/// Строка описания версии: пункт, обычный текст или заголовок блока
+/// «Небольшие изменения». `minor` у этого заголовка и у всего под ним.
+typedef ReleaseNote = ({String text, bool bullet, bool heading, bool minor});
 
 /// Версия на GitHub.
 class AppRelease {
@@ -76,16 +77,43 @@ class UpdateException implements Exception {
   String toString() => message;
 }
 
+/// Заголовок блока, который в окне обновления сворачивается.
+const minorChangesTitle = 'Небольшие изменения';
+
 /// Список изменений из текста релиза.
-List<ReleaseNote> parseReleaseNotes(String body) => [
-  for (final raw in const LineSplitter().convert(body))
-    if (raw.trim() case final line
-        when line.isNotEmpty && !line.startsWith('#'))
-      if (RegExp(r'^[*\-•]\s+').firstMatch(line) case final marker?)
-        (text: line.substring(marker.end).trim(), bullet: true)
-      else
-        (text: line, bullet: false),
-];
+List<ReleaseNote> parseReleaseNotes(String body) {
+  final notes = <ReleaseNote>[];
+  var minor = false;
+  for (final raw in const LineSplitter().convert(body)) {
+    final line = raw.trim();
+    if (line.isEmpty) continue;
+    if (line.startsWith('#')) {
+      final level = line.length - line.replaceFirst(RegExp(r'^#+'), '').length;
+      if (level < 3) {
+        minor = false;
+        continue;
+      }
+      final title = line
+          .substring(level)
+          .trim()
+          .replaceFirst(RegExp(r':$'), '');
+      minor = title.toLowerCase() == minorChangesTitle.toLowerCase();
+      if (minor) {
+        notes.add((text: title, bullet: false, heading: true, minor: true));
+      }
+    } else if (RegExp(r'^[*\-•]\s+').firstMatch(line) case final marker?) {
+      notes.add((
+        text: line.substring(marker.end).trim(),
+        bullet: true,
+        heading: false,
+        minor: minor,
+      ));
+    } else {
+      notes.add((text: line, bullet: false, heading: false, minor: minor));
+    }
+  }
+  return notes;
+}
 
 /// Версии из ответа GitHub.
 List<AppRelease> parseReleases(List<dynamic> json, String repository) {
