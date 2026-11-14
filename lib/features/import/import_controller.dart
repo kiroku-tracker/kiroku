@@ -10,7 +10,7 @@ class ImportState {
   const ImportState({
     required this.plan,
     required this.items,
-    required this.owned,
+    required this.statuses,
     this.overrides = const {},
     this.replace = false,
   });
@@ -18,8 +18,8 @@ class ImportState {
   final ImportPlan plan;
   final List<ImportItem> items;
 
-  /// Номера тайтлов, которые уже есть в библиотеке.
-  final Set<int> owned;
+  /// Тайтлы, которые уже есть в библиотеке, и их статусы.
+  final Map<int, WatchStatus> statuses;
 
   /// Галочки, которые человек поставил или снял сам.
   final Map<int, bool> overrides;
@@ -28,8 +28,11 @@ class ImportState {
   ImportGroup groupOf(int index) {
     final id = items[index].shikimoriId;
     if (id == null) return ImportGroup.notFound;
-    return owned.contains(id) ? ImportGroup.existing : ImportGroup.add;
+    return statuses.containsKey(id) ? ImportGroup.existing : ImportGroup.add;
   }
+
+  /// Статус тайтла в Kiroku, если он там есть.
+  WatchStatus? libraryStatus(int index) => statuses[items[index].shikimoriId];
 
   bool isChecked(int index) =>
       overrides[index] ??
@@ -62,13 +65,13 @@ class ImportState {
 
   ImportState copyWith({
     List<ImportItem>? items,
-    Set<int>? owned,
+    Map<int, WatchStatus>? statuses,
     Map<int, bool>? overrides,
     bool? replace,
   }) => ImportState(
     plan: plan,
     items: items ?? this.items,
-    owned: owned ?? this.owned,
+    statuses: statuses ?? this.statuses,
     overrides: overrides ?? this.overrides,
     replace: replace ?? this.replace,
   );
@@ -81,7 +84,7 @@ class ImportController extends Notifier<ImportState?> {
       final current = state;
       final statuses = next.value;
       if (current != null && statuses != null) {
-        state = current.copyWith(owned: statuses.keys.toSet());
+        state = current.copyWith(statuses: statuses);
       }
     });
     return null;
@@ -93,7 +96,7 @@ class ImportController extends Notifier<ImportState?> {
     state = ImportState(
       plan: plan,
       items: List.of(plan.items),
-      owned: statuses.keys.toSet(),
+      statuses: statuses,
     );
   }
 
