@@ -14,6 +14,8 @@ import 'package:kiroku/app.dart';
 import 'package:kiroku/core/toast.dart';
 import 'package:kiroku/core/widgets/setting_rows.dart';
 import 'package:kiroku/core/widgets/status_menu.dart';
+import 'package:kiroku/features/import/import_dialog.dart';
+import 'package:kiroku/features/import/import_sources.dart';
 import 'package:kiroku/features/library/library_toolbar.dart';
 import 'package:kiroku/data/database/app_database.dart';
 import 'package:kiroku/data/database/library_repository.dart';
@@ -357,6 +359,76 @@ void main() {
     final welcome = await container.read(welcomeProvider.future);
     expect(welcome.done, WelcomeStep.values.toSet());
     expect(newWelcomeSteps(welcome.seen), isEmpty);
+
+    await unmount(tester);
+  });
+
+  testWidgets('пустая библиотека: импорт из Shikimori и AniLibria', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    expect(find.text('Импорт из Shikimori'), findsOneWidget);
+    expect(find.text('Импорт из AniLibria'), findsOneWidget);
+
+    await tester.tap(find.text('Импорт из AniLibria'));
+    await settle(tester);
+    expect(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Импорт из AniLibria'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Отмена'), findsOneWidget);
+    await tester.tap(find.text('Отмена'));
+    await settle(tester);
+    expect(find.text('Отмена'), findsNothing);
+
+    await unmount(tester);
+  });
+
+  testWidgets('настройки: блок импорта, сервисы отдельными карточками', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await tester.tap(find.byTooltip('Настройки').first);
+    await settle(tester);
+    final title = find.text('Импорт');
+    await tester.ensureVisible(title);
+    expect(title, findsOneWidget);
+    expect(
+      find.byType(ImportSourceCard),
+      findsNWidgets(ImportSource.values.length),
+    );
+
+    final aniLibria = find.widgetWithText(ImportSourceCard, 'AniLibria');
+    await tester.ensureVisible(aniLibria);
+    expect(find.widgetWithText(ImportSourceCard, 'Shikimori'), findsOneWidget);
+    await tester.tap(aniLibria);
+    await settle(tester);
+    expect(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Импорт из AniLibria'),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Отмена'));
+    await settle(tester);
+
+    await unmount(tester);
+  });
+
+  testWidgets('знакомство: перенос с Shikimori и AniLibria', (tester) async {
+    await pumpApp(tester);
+    await tester.tap(find.byTooltip('Настройки').first);
+    await settle(tester);
+    await tester.tap(find.text('Знакомство с Kiroku'));
+    await settle(tester);
+    await tester.tap(find.text('Дальше'));
+    await settle(tester);
+    expect(find.text('Перенести с Shikimori'), findsOneWidget);
+    expect(find.text('Перенести с AniLibria'), findsOneWidget);
 
     await unmount(tester);
   });

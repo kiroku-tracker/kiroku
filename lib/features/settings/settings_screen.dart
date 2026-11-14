@@ -18,7 +18,7 @@ import '../../system/autostart.dart';
 import '../../system/discord_presence.dart';
 import '../../system/updates.dart';
 import '../autotrack/auto_marker.dart';
-import '../import/shikimori_import.dart';
+import '../import/import_sources.dart';
 import '../party/party_address.dart';
 import '../updates/update_dialog.dart';
 import '../welcome/welcome_dialog.dart';
@@ -345,22 +345,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 18),
+          const Panel(title: 'Импорт', child: ImportSources()),
+          const SizedBox(height: 18),
           Panel(
             title: 'Данные',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ChoiceRow(
-                  title: 'Импорт из Shikimori',
-                  text:
-                      'Статусы, прогресс, оценки и заметки по нику, без '
-                      'входа',
-                  control: OutlinedButton.icon(
-                    onPressed: () => showShikimoriImportDialog(context),
-                    icon: const Icon(LucideIcons.download),
-                    label: const Text('Импортировать…'),
-                  ),
-                ),
                 ChoiceRow(
                   title: 'Резервные копии',
                   text: 'Создаются раз в день при запуске',

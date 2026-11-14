@@ -20,7 +20,7 @@ import '../../data/database/watch_status.dart';
 import '../../data/providers.dart';
 import '../franchise/franchise_card.dart';
 import '../groups/group_actions.dart';
-import '../import/shikimori_import.dart';
+import '../import/import_dialog.dart';
 import '../notifications/notice_center.dart';
 import '../title/title_screen.dart';
 import 'continue_watching.dart';
@@ -108,7 +108,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                 EmptyState(
                   title: 'Библиотека пока пустая',
                   text:
-                      'Тайтлы добавляются через поиск или импорт с Shikimori.',
+                      'Тайтлы добавляются через поиск или импорт с Shikimori и '
+                      'AniLibria.',
                   actions: [
                     FilledButton.icon(
                       onPressed: () => ref
@@ -117,11 +118,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                       icon: const Icon(LucideIcons.search),
                       label: const Text('Перейти к поиску'),
                     ),
-                    OutlinedButton.icon(
-                      onPressed: () => showShikimoriImportDialog(context),
-                      icon: const Icon(LucideIcons.download),
-                      label: const Text('Импорт из Shikimori'),
-                    ),
+                    for (final source in ImportSource.values)
+                      OutlinedButton.icon(
+                        onPressed: () => showImportDialog(context, source),
+                        icon: const Icon(LucideIcons.download),
+                        label: Text('Импорт из ${source.label}'),
+                      ),
                   ],
                 ),
               ],

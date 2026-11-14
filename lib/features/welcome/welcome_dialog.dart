@@ -14,7 +14,7 @@ import '../../data/database/settings_repository.dart';
 import '../../data/database/watch_status.dart';
 import '../../data/providers.dart';
 import '../../system/autostart.dart';
-import '../import/shikimori_import.dart';
+import '../import/import_dialog.dart';
 import 'welcome_state.dart';
 
 /// Окно «Знакомство с Kiroku»; [onlyNew] показывает только шаги, которые
@@ -533,11 +533,18 @@ class _LibraryStep extends StatelessWidget {
           spacing: 10,
           runSpacing: 10,
           children: [
-            FilledButton.icon(
-              onPressed: () => showShikimoriImportDialog(context),
-              icon: const Icon(LucideIcons.download),
-              label: const Text('Перенести с Shikimori'),
-            ),
+            for (final source in ImportSource.values)
+              source == ImportSource.values.first
+                  ? FilledButton.icon(
+                      onPressed: () => showImportDialog(context, source),
+                      icon: const Icon(LucideIcons.download),
+                      label: Text('Перенести с ${source.label}'),
+                    )
+                  : OutlinedButton.icon(
+                      onPressed: () => showImportDialog(context, source),
+                      icon: const Icon(LucideIcons.download),
+                      label: Text('Перенести с ${source.label}'),
+                    ),
             OutlinedButton.icon(
               onPressed: onSearch,
               icon: const Icon(LucideIcons.search),
