@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'anilibria/anilibria_client.dart';
 import 'database/app_database.dart';
 import 'database/franchise_repository.dart';
 import 'database/franchise_rules.dart';
@@ -25,6 +26,10 @@ final databaseProvider = Provider<AppDatabase>((ref) {
 
 final shikimoriClientProvider = Provider<ShikimoriClient>(
   (ref) => ShikimoriClient(),
+);
+
+final aniLibriaClientProvider = Provider<AniLibriaClient>(
+  (ref) => AniLibriaClient(),
 );
 
 final libraryRepositoryProvider = Provider<LibraryRepository>(
