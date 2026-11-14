@@ -68,6 +68,7 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
   AniLibriaOtp? _otp;
   Timer? _timer;
   var _secondsLeft = 0;
+  var _errors = 0;
   var _expired = false;
   var _polling = false;
 
@@ -154,7 +155,8 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
       if (!mounted) return;
       setState(() {
         _otp = otp;
-        _secondsLeft = otp.expiresAt.difference(DateTime.now()).inSeconds;
+        _secondsLeft = otp.lifetime.inSeconds;
+        _errors = 0;
       });
       _timer = Timer.periodic(const Duration(seconds: 3), (_) => _poll());
     } on AniLibriaException catch (error) {
@@ -174,30 +176,42 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
     });
   }
 
+  void _expireIfLate() {
+    if (_secondsLeft > 0 || !mounted) return;
+    _timer?.cancel();
+    setState(() => _expired = true);
+  }
+
   Future<void> _poll() async {
     final otp = _otp;
-    if (_polling || otp == null) return;
+    if (otp == null) return;
+    _secondsLeft -= 3;
+    if (_polling) {
+      _expireIfLate();
+      return;
+    }
     _polling = true;
     try {
       final token = await ref
           .read(aniLibriaClientProvider)
           .login(otp.code, _deviceId);
       if (!mounted) return;
+      _errors = 0;
       if (token != null) {
         _timer?.cancel();
         await _loadAniLibria(token);
         return;
       }
-      _secondsLeft -= 3;
-      if (_secondsLeft <= 0) {
-        _timer?.cancel();
-        setState(() => _expired = true);
-      }
     } on AniLibriaException catch (error) {
-      _failCode(error.message);
+      if (!mounted) return;
+      if (++_errors >= 3) {
+        _failCode(error.message);
+        return;
+      }
     } finally {
       _polling = false;
     }
+    _expireIfLate();
   }
 
   Future<void> _loadAniLibria(String token) async {
@@ -265,12 +279,16 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
     try {
       final result = await ref
           .read(libraryRepositoryProvider)
-          .importItems(state.selected, replace: state.replace);
+          .importItems(state.selected, replace: true);
       if (!mounted) return;
       Navigator.of(context).pop();
+      final done = [
+        if (result.added > 0) 'добавлено ${result.added}',
+        if (result.replaced > 0) 'заменено ${result.replaced}',
+      ];
       toast.show(
         'Импорт из ${widget.source.label}: '
-        '${[if (result.added > 0) 'добавлено ${result.added}', if (result.replaced > 0) 'заменено ${result.replaced}'].join(', ')}',
+        '${done.isEmpty ? 'ничего не изменилось' : done.join(', ')}',
         undo: result.undo,
       );
       unawaited(ref.read(releaseWatcherProvider).check());
@@ -303,7 +321,9 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: busy ? null : () => Navigator.of(context).pop(),
+          onPressed: _step == _Step.importing
+              ? null
+              : () => Navigator.of(context).pop(),
           child: const Text('Отмена'),
         ),
         if (!preview && !aniLibria)

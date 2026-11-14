@@ -139,7 +139,7 @@ class ImportController extends Notifier<ImportState?> {
 
   /// Привязывает тайтл из «Не найдены» к выбранному тайтлу Shikimori.
   void match(int index, AnimeInfo anime) {
-    _edit(index, (item) => item.withAnime(anime));
+    _edit(index, (item) => item.withAnime(anime).withStatus(item.status));
     final current = state;
     if (current == null) return;
     state = current.copyWith(overrides: {...current.overrides, index: true});

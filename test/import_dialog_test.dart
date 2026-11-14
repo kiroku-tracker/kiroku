@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:kiroku/core/toast.dart';
+import 'package:kiroku/data/import/shikimori_plan.dart';
+import 'package:kiroku/data/providers.dart';
 import 'package:kiroku/data/shikimori/user_rate.dart';
 
 import 'import_dialog_helpers.dart';
@@ -46,6 +48,78 @@ void main() {
   testWidgets('окно достаточно широкое для карточек', (tester) async {
     await openImport(tester, shikimori: FakeShikimori(user: vasya));
     expect(tester.getSize(find.byType(TextField)).width, greaterThan(780));
+  });
+
+  testWidgets('вручную отмеченный «Уже есть» записывается', (tester) async {
+    final container = await openImport(
+      tester,
+      shikimori: FakeShikimori(
+        user: vasya,
+        rates: [
+          UserRate(anime: infoFor(1), status: 'dropped'),
+          UserRate(anime: infoFor(2), status: 'planned'),
+        ],
+      ),
+    );
+    await tester.runAsync(
+      () => container
+          .read(libraryRepositoryProvider)
+          .importItems(
+            shikimoriItems([
+              UserRate(anime: infoFor(1), status: 'watching', episodes: 3),
+            ]),
+            replace: false,
+          ),
+    );
+    await findList(tester, 'vasya');
+    await tester.tap(find.byKey(const ValueKey('plate-existing')));
+    await tester.pump();
+    await tester.tap(find.byType(Checkbox).first);
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('plate-add')));
+    await tester.pump();
+    expect(find.text('Перенести 2'), findsOneWidget);
+
+    await tester.tap(find.text('Перенести 2'));
+    await tester.pumpAndSettle();
+    final entries = await libraryEntries(container);
+    expect(entries.firstWhere((e) => e.animeId == 1).status, 'dropped');
+    expect(entries.length, 2);
+    container.read(toastProvider.notifier).hide();
+  });
+
+  testWidgets('только «Уже есть»: в подсказке есть что сделано', (
+    tester,
+  ) async {
+    final container = await openImport(
+      tester,
+      shikimori: FakeShikimori(
+        user: vasya,
+        rates: [UserRate(anime: infoFor(1), status: 'dropped')],
+      ),
+    );
+    await tester.runAsync(
+      () => container
+          .read(libraryRepositoryProvider)
+          .importItems(
+            shikimoriItems([
+              UserRate(anime: infoFor(1), status: 'watching', episodes: 3),
+            ]),
+            replace: false,
+          ),
+    );
+    await findList(tester, 'vasya');
+    await tester.tap(find.byKey(const ValueKey('plate-existing')));
+    await tester.pump();
+    await tester.tap(find.byType(Checkbox).first);
+    await tester.pump();
+    await tester.tap(find.text('Перенести 1'));
+    await tester.pumpAndSettle();
+    expect(
+      container.read(toastProvider)?.text,
+      'Импорт из Shikimori: заменено 1',
+    );
+    container.read(toastProvider.notifier).hide();
   });
 
   testWidgets('«Отмена» до переноса ничего не пишет', (tester) async {

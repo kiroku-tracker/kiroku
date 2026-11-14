@@ -49,7 +49,76 @@ void main() {
     );
     expect(jsonDecode(seen.body), {'device_id': 'dev-1'});
     expect(otp.code, '058701');
-    expect(otp.expiresAt.toUtc(), DateTime.utc(2026, 11, 14, 10));
+    expect(otp.lifetime, const Duration(seconds: 120));
+  });
+
+  test('requestCode без remaining_time даёт две минуты', () async {
+    final client = AniLibriaClient(
+      httpClient: MockClient(
+        (request) async => _json({
+          'otp': {'code': '058701'},
+        }),
+      ),
+    );
+    expect(
+      (await client.requestCode('dev-1')).lifetime,
+      const Duration(minutes: 2),
+    );
+  });
+
+  test('страницы идут по счёту клиента, а не по ответу сервера', () async {
+    var requests = 0;
+    final client = AniLibriaClient(
+      httpClient: MockClient((request) async {
+        requests++;
+        return _json(
+          _page([_release(requests, 50 + requests, 'Любимое')], 1, 3),
+        );
+      }),
+    );
+    final favorites = await client.favorites('tok');
+    expect(requests, 3);
+    expect(favorites.length, 3);
+  });
+
+  test('пустая страница останавливает загрузку', () async {
+    var requests = 0;
+    final client = AniLibriaClient(
+      httpClient: MockClient((request) async {
+        requests++;
+        final page = int.parse(request.url.queryParameters['page']!);
+        return _json(
+          _page(page == 1 ? [_release(1, 51, 'Любимое')] : [], page, 99),
+        );
+      }),
+    );
+    await client.favorites('tok');
+    expect(requests, 2);
+  });
+
+  test('числа-строки в ответе не ломают загрузку', () async {
+    final client = AniLibriaClient(
+      httpClient: MockClient((request) async {
+        final page = int.parse(request.url.queryParameters['page']!);
+        return _json({
+          'data': [
+            {
+              'id': '${page + 6}',
+              'name': {'main': 'Любимое'},
+              'shikimori': {'id': '${page + 50}'},
+              'episodes_total': '12',
+            },
+          ],
+          'meta': {
+            'pagination': {'current_page': '$page', 'total_pages': '2'},
+          },
+        });
+      }),
+    );
+    final favorites = await client.favorites('tok');
+    expect(favorites.map((f) => f.releaseId), [7, 8]);
+    expect(favorites.map((f) => f.shikimoriId), [51, 52]);
+    expect(favorites.first.episodesTotal, 12);
   });
 
   test(

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:kiroku/core/theme/app_theme.dart';
+import 'package:kiroku/core/widgets/poster.dart';
 import 'package:kiroku/data/database/app_database.dart';
 import 'package:kiroku/data/database/watch_status.dart';
 import 'package:kiroku/data/import/import_plan.dart';
@@ -35,8 +36,9 @@ ImportItem _item(int id) => ImportItem(
 
 Future<ProviderContainer> _show(
   WidgetTester tester,
-  List<ImportItem> items,
-) async {
+  List<ImportItem> items, {
+  Size size = const Size(900, 900),
+}) async {
   final database = AppDatabase(NativeDatabase.memory());
   addTearDown(database.close);
   final container = ProviderContainer(
@@ -48,7 +50,7 @@ Future<ProviderContainer> _show(
     ],
   );
   addTearDown(container.dispose);
-  tester.view.physicalSize = const Size(900, 900);
+  tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
@@ -138,6 +140,33 @@ void main() {
     await tester.pump();
     expect(find.text('Неизвестный релиз'), findsOneWidget);
     expect(find.byType(Image), findsNothing);
+  });
+
+  testWidgets('600 тайтлов: строятся только видимые карточки', (tester) async {
+    await _show(tester, [for (var i = 100; i < 700; i++) _item(i)]);
+    expect(tester.takeException(), isNull);
+    final built = find.byType(Poster).evaluate().length;
+    expect(built, greaterThan(0));
+    expect(built, lessThan(60));
+  });
+
+  testWidgets('в невысоком окне предпросмотр не вылезает за экран', (
+    tester,
+  ) async {
+    await _show(tester, [
+      for (var i = 100; i < 140; i++) _item(i),
+    ], size: const Size(900, 650));
+    expect(tester.takeException(), isNull);
+    final grid = tester.getSize(find.byType(GridView));
+    expect(grid.height, lessThanOrEqualTo(650 - 300));
+    expect(grid.height, greaterThan(100));
+  });
+
+  testWidgets('несколько карточек: сетка не тянется на пустое место', (
+    tester,
+  ) async {
+    await _show(tester, [_item(1), _item(2)]);
+    expect(tester.getSize(find.byType(GridView)).height, lessThan(300));
   });
 
   testWidgets('без «Не найдены» такой плитки нет', (tester) async {

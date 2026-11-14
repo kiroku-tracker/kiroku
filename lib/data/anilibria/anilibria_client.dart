@@ -16,10 +16,12 @@ class AniLibriaException implements Exception {
 
 /// Код для входа на сайте AniLibria.
 class AniLibriaOtp {
-  const AniLibriaOtp({required this.code, required this.expiresAt});
+  const AniLibriaOtp({required this.code, required this.lifetime});
 
   final String code;
-  final DateTime expiresAt;
+
+  /// Сколько секунд код ещё действует.
+  final Duration lifetime;
 }
 
 /// Релиз из коллекции пользователя.
@@ -93,6 +95,7 @@ class AniLibriaClient {
 
   static const _timeout = Duration(seconds: 15);
   static const _pageSize = 50;
+  static const _maxPages = 400;
 
   final http.Client _http;
 
@@ -138,12 +141,11 @@ class AniLibriaClient {
         body: jsonEncode({'device_id': deviceId}),
       ),
     );
-    final otp = (_decode(response) as Map)['otp'] as Map;
+    final body = _decode(response) as Map;
+    final seconds = _int(body['remaining_time']);
     return AniLibriaOtp(
-      code: '${otp['code']}',
-      expiresAt:
-          DateTime.tryParse('${otp['expired_at']}') ??
-          DateTime.now().add(const Duration(minutes: 2)),
+      code: '${(body['otp'] as Map)['code']}',
+      lifetime: Duration(seconds: seconds ?? 120),
     );
   }
 
@@ -196,19 +198,22 @@ class AniLibriaClient {
         ),
       );
       final body = _decode(response) as Map;
-      for (final item in (body['data'] as List? ?? const [])) {
+      final rows = body['data'] as List? ?? const [];
+      for (final item in rows) {
         result.add((item as Map).cast<String, dynamic>());
       }
       final pagination = ((body['meta'] as Map?)?['pagination'] as Map?) ?? {};
-      final current = (pagination['current_page'] as num?)?.toInt() ?? page;
-      final total = (pagination['total_pages'] as num?)?.toInt() ?? page;
-      if (current >= total) return result;
-      page = current + 1;
+      final total = _int(pagination['total_pages']) ?? page;
+      if (rows.isEmpty || page >= total || page >= _maxPages) return result;
+      page++;
     }
   }
 
-  int? _shikimori(Map release) =>
-      ((release['shikimori'] as Map?)?['id'] as num?)?.toInt();
+  /// Целое число из числа или строки.
+  static int? _int(Object? value) =>
+      value is num ? value.toInt() : int.tryParse('$value');
+
+  int? _shikimori(Map release) => _int((release['shikimori'] as Map?)?['id']);
 
   String _title(Map release) {
     final name = release['name'];
@@ -228,10 +233,10 @@ class AniLibriaClient {
       for (final release in rows) {
         result.add(
           AniLibriaCollectionItem(
-            releaseId: (release['id'] as num).toInt(),
+            releaseId: _int(release['id']) ?? 0,
             shikimoriId: _shikimori(release),
             title: _title(release),
-            episodesTotal: (release['episodes_total'] as num?)?.toInt() ?? 0,
+            episodesTotal: _int(release['episodes_total']) ?? 0,
             collection: type,
           ),
         );
@@ -246,10 +251,10 @@ class AniLibriaClient {
     return [
       for (final release in rows)
         AniLibriaFavorite(
-          releaseId: (release['id'] as num).toInt(),
+          releaseId: _int(release['id']) ?? 0,
           shikimoriId: _shikimori(release),
           title: _title(release),
-          episodesTotal: (release['episodes_total'] as num?)?.toInt() ?? 0,
+          episodesTotal: _int(release['episodes_total']) ?? 0,
         ),
     ];
   }
@@ -262,10 +267,10 @@ class AniLibriaClient {
         if (row['release_episode'] case final Map episode)
           if (episode['release'] case final Map release)
             AniLibriaView(
-              releaseId: (release['id'] as num).toInt(),
+              releaseId: _int(release['id']) ?? 0,
               shikimoriId: _shikimori(release),
               title: _title(release),
-              episodesTotal: (release['episodes_total'] as num?)?.toInt() ?? 0,
+              episodesTotal: _int(release['episodes_total']) ?? 0,
               ordinal: (episode['ordinal'] as num?) ?? 0,
               watched: row['is_watched'] == true,
               updatedAt:

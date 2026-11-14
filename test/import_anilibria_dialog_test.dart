@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart' show AlertDialog;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:kiroku/core/toast.dart';
@@ -12,6 +15,8 @@ class _FakeAniLibria extends AniLibriaClient {
     this.pendingLogins = 0,
     this.codeLife = const Duration(minutes: 2),
     this.collectionsError,
+    this.failLogins = 0,
+    this.gate,
     this.historyError,
     this.collectionItems = const [],
     this.favoriteItems = const [],
@@ -21,6 +26,8 @@ class _FakeAniLibria extends AniLibriaClient {
   final int pendingLogins;
   final Duration codeLife;
   final AniLibriaException? collectionsError;
+  final int failLogins;
+  final Completer<void>? gate;
   final AniLibriaException? historyError;
   final List<AniLibriaCollectionItem> collectionItems;
   final List<AniLibriaFavorite> favoriteItems;
@@ -32,16 +39,16 @@ class _FakeAniLibria extends AniLibriaClient {
   @override
   Future<AniLibriaOtp> requestCode(String deviceId) async {
     codes++;
-    return AniLibriaOtp(
-      code: '05870$codes',
-      expiresAt: DateTime.now().add(codeLife),
-    );
+    return AniLibriaOtp(code: '05870$codes', lifetime: codeLife);
   }
 
   @override
   Future<String?> login(String code, String deviceId) async {
     logins++;
-    return logins > pendingLogins ? 'token' : null;
+    if (logins <= failLogins) {
+      throw const AniLibriaException('AniLibria не ответила: timeout');
+    }
+    return logins - failLogins > pendingLogins ? 'token' : null;
   }
 
   @override
@@ -49,6 +56,7 @@ class _FakeAniLibria extends AniLibriaClient {
 
   @override
   Future<List<AniLibriaCollectionItem>> collections(String token) async {
+    await gate?.future;
     if (collectionsError != null) throw collectionsError!;
     return collectionItems;
   }
@@ -224,5 +232,66 @@ void main() {
     expect(find.textContaining('нет ни коллекций'), findsOneWidget);
     await tester.tap(find.text('Отмена'));
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('единичный сбой опроса не сбрасывает код', (tester) async {
+    final api = _FakeAniLibria(
+      failLogins: 2,
+      collectionItems: collections,
+      favoriteItems: favorites,
+      views: views,
+    );
+    await openImport(
+      tester,
+      shikimori: FakeShikimori(),
+      aniLibria: api,
+      source: ImportSource.aniLibria,
+    );
+    for (var i = 0; i < 3; i++) {
+      await _tick(tester);
+    }
+    await tester.pumpAndSettle();
+    expect(api.codes, 1);
+    expect(find.text('Список «Вася»: 2 тайтла'), findsOneWidget);
+    await tester.tap(find.text('Отмена'));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('три сбоя подряд: сообщение и новый код', (tester) async {
+    final api = _FakeAniLibria(failLogins: 3);
+    await openImport(
+      tester,
+      shikimori: FakeShikimori(),
+      aniLibria: api,
+      source: ImportSource.aniLibria,
+    );
+    for (var i = 0; i < 3; i++) {
+      await _tick(tester);
+    }
+    expect(find.textContaining('AniLibria не ответила'), findsOneWidget);
+    expect(find.text('Новый код'), findsOneWidget);
+    await tester.tap(find.text('Отмена'));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('загрузку можно отменить', (tester) async {
+    final gate = Completer<void>();
+    final api = _FakeAniLibria(collectionItems: collections, gate: gate);
+    final container = await openImport(
+      tester,
+      shikimori: FakeShikimori(),
+      aniLibria: api,
+      source: ImportSource.aniLibria,
+    );
+    await _tick(tester);
+    expect(find.text('Загружаю коллекции…'), findsOneWidget);
+    await tester.tap(find.text('Отмена'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsNothing);
+
+    gate.complete();
+    await tester.pump(const Duration(seconds: 1));
+    expect(tester.takeException(), isNull);
+    expect(await libraryEntries(container), isEmpty);
   });
 }

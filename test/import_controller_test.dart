@@ -114,6 +114,31 @@ void main() {
     expect(selected[2].episodesMarked, 3);
   });
 
+  test('ручной выбор тайтла с «Просмотрено» отмечает все серии', () async {
+    final container = ProviderContainer(
+      overrides: [
+        libraryStatusesProvider.overrideWith((ref) => Stream.value({})),
+      ],
+    );
+    addTearDown(container.dispose);
+    container.listen(importControllerProvider, (_, _) {});
+    final controller = container.read(importControllerProvider.notifier);
+    await controller.start(
+      const ImportPlan(
+        sourceName: 'AniLibria',
+        userName: 'Вася',
+        items: [
+          ImportItem(sourceTitle: 'Без номера', status: WatchStatus.completed),
+        ],
+      ),
+    );
+    controller.match(0, _info(50));
+    expect(
+      container.read(importControllerProvider)!.items[0].episodesMarked,
+      12,
+    );
+  });
+
   test('ручной выбор переводит «Не найдены» в «Добавятся»', () async {
     final container = await _started();
     final controller = container.read(importControllerProvider.notifier);

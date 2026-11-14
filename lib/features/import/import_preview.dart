@@ -93,18 +93,10 @@ class _ImportPreviewState extends ConsumerState<ImportPreview> {
           ],
         ),
         const SizedBox(height: 14),
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 420),
-          child: SingleChildScrollView(
-            child: Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                for (final index in indexes)
-                  _ImportCard(index: index, state: state),
-              ],
-            ),
-          ),
+        _CardGrid(
+          indexes: indexes,
+          state: state,
+          tall: shown == ImportGroup.existing,
         ),
         if (existing > 0) ...[
           const SizedBox(height: 14),
@@ -133,6 +125,59 @@ class _ImportPreviewState extends ConsumerState<ImportPreview> {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// Ленивая сетка карточек: строит только видимые и не выше окна.
+class _CardGrid extends StatelessWidget {
+  const _CardGrid({
+    required this.indexes,
+    required this.state,
+    required this.tall,
+  });
+
+  static const _spacing = 12.0;
+  static const _cell = _ImportCard.width;
+  static const _rowHeight = 284.0;
+  static const _tallRowHeight = 352.0;
+
+  final List<int> indexes;
+  final ImportState state;
+
+  /// В «Уже есть» подписей больше: статус в Kiroku и в источнике.
+  final bool tall;
+
+  @override
+  Widget build(BuildContext context) {
+    final rowHeight = tall ? _tallRowHeight : _rowHeight;
+    if (indexes.isEmpty) return const SizedBox.shrink();
+    // Остальное окно (заголовок, плитки, галочка замены, кнопки) занимает
+    // около 440 px.
+    final limit = (MediaQuery.sizeOf(context).height - 440).clamp(
+      rowHeight / 2,
+      420.0,
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = (constraints.maxWidth / (_cell + _spacing)).ceil();
+        final rows = (indexes.length / columns).ceil();
+        final content = rows * rowHeight + (rows - 1) * _spacing;
+        return SizedBox(
+          height: content < limit ? content : limit,
+          child: GridView.builder(
+            gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: _cell,
+              mainAxisExtent: rowHeight,
+              crossAxisSpacing: _spacing,
+              mainAxisSpacing: _spacing,
+            ),
+            itemCount: indexes.length,
+            itemBuilder: (context, i) =>
+                _ImportCard(index: indexes[i], state: state),
+          ),
+        );
+      },
     );
   }
 }
@@ -259,99 +304,96 @@ class _ImportCard extends ConsumerWidget {
       style: AppTheme.menuStyle,
       alignmentOffset: const Offset(0, 4),
       menuChildren: menu,
-      builder: (context, menuController, _) => SizedBox(
-        width: width,
-        child: Material(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(9),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: () => menuController.isOpen
-                ? menuController.close()
-                : menuController.open(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(height: 3, color: style.border),
-                Stack(
-                  children: [
-                    if (lost)
-                      const AspectRatio(
-                        aspectRatio: 2 / 3,
-                        child: ColoredBox(
-                          color: AppColors.poster,
-                          child: Center(
-                            child: Padding(
-                              padding: EdgeInsets.all(8),
-                              child: Text(
-                                'нет на Shikimori',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: AppColors.posterPlaceholder,
-                                  fontSize: 12,
-                                ),
+      builder: (context, menuController, _) => Material(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(9),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => menuController.isOpen
+              ? menuController.close()
+              : menuController.open(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(height: 3, color: style.border),
+              Stack(
+                children: [
+                  if (lost)
+                    const AspectRatio(
+                      aspectRatio: 2 / 3,
+                      child: ColoredBox(
+                        color: AppColors.poster,
+                        child: Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(8),
+                            child: Text(
+                              'нет на Shikimori',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: AppColors.posterPlaceholder,
+                                fontSize: 12,
                               ),
                             ),
                           ),
                         ),
-                      )
-                    else
-                      Poster(url: item.anime?.posterUrl),
-                    if (!lost)
-                      Positioned(
-                        left: 4,
-                        top: 4,
-                        child: _Tick(
-                          value: state.isChecked(index),
-                          onChanged: () => controller.toggle(index),
-                        ),
                       ),
-                    if (item.favorite)
-                      const Positioned(right: 6, top: 6, child: _Heart()),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
-                  child: SizedBox(
-                    height: 34,
-                    child: Text(
-                      item.anime?.title ?? item.sourceTitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        height: 1.25,
+                    )
+                  else
+                    Poster(url: item.anime?.posterUrl),
+                  if (!lost)
+                    Positioned(
+                      left: 4,
+                      top: 4,
+                      child: _Tick(
+                        value: state.isChecked(index),
+                        onChanged: () => controller.toggle(index),
                       ),
+                    ),
+                  if (item.favorite)
+                    const Positioned(right: 6, top: 6, child: _Heart()),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
+                child: SizedBox(
+                  height: 34,
+                  child: Text(
+                    item.anime?.title ?? item.sourceTitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                      height: 1.25,
                     ),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 2, 8, 8),
-                  child: group == ImportGroup.existing
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'В Kiroku: ${inLibrary?.label ?? ''}',
-                              style: _small,
-                            ),
-                            Text(
-                              'В ${state.plan.sourceName}: ${item.status.label}',
-                              style: _small,
-                            ),
-                          ],
-                        )
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(item.status.label, style: _small),
-                            Text(_progress(item), style: _small),
-                          ],
-                        ),
-                ),
-              ],
-            ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 2, 8, 8),
+                child: group == ImportGroup.existing
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'В Kiroku: ${inLibrary?.label ?? ''}',
+                            style: _small,
+                          ),
+                          Text(
+                            'В ${state.plan.sourceName}: ${item.status.label}',
+                            style: _small,
+                          ),
+                        ],
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(item.status.label, style: _small),
+                          Text(_progress(item), style: _small),
+                        ],
+                      ),
+              ),
+            ],
           ),
         ),
       ),

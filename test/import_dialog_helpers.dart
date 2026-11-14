@@ -66,6 +66,7 @@ Future<ProviderContainer> openImport(
   required ShikimoriClient shikimori,
   AniLibriaClient? aniLibria,
   ImportSource source = ImportSource.shikimori,
+  Size size = const Size(1100, 1000),
 }) async {
   final database = AppDatabase(NativeDatabase.memory());
   addTearDown(database.close);
@@ -79,7 +80,7 @@ Future<ProviderContainer> openImport(
     ],
   );
   addTearDown(container.dispose);
-  tester.view.physicalSize = const Size(1100, 1000);
+  tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
