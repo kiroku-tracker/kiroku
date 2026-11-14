@@ -15,6 +15,7 @@ import 'package:kiroku/data/database/watch_status.dart';
 import 'package:kiroku/data/shikimori/anime_info.dart';
 import 'package:kiroku/data/shikimori/shikimori_client.dart';
 import 'package:kiroku/data/shikimori/user_rate.dart';
+import 'package:kiroku/data/import/shikimori_plan.dart';
 import 'package:kiroku/data/watch/dubbing_rules.dart';
 import 'package:kiroku/data/watch/site_episodes_repository.dart';
 import 'package:kiroku/data/yummy/yummy_client.dart';
@@ -73,18 +74,21 @@ void main() {
 
   group('импорт из Shikimori', () {
     test('импорт', () async {
-      final result = await library.importRates([
-        const UserRate(
-          anime: frieren,
-          status: 'completed',
-          score: 10,
-          episodes: 28,
-          rewatches: 1,
-          text: 'Лучшее',
-        ),
-        const UserRate(anime: ongoing, status: 'watching', episodes: 5),
-        const UserRate(anime: other, status: 'on_hold', episodes: 3),
-      ], replace: false);
+      final result = await library.importItems(
+        shikimoriItems([
+          const UserRate(
+            anime: frieren,
+            status: 'completed',
+            score: 10,
+            episodes: 28,
+            rewatches: 1,
+            text: 'Лучшее',
+          ),
+          const UserRate(anime: ongoing, status: 'watching', episodes: 5),
+          const UserRate(anime: other, status: 'on_hold', episodes: 3),
+        ]),
+        replace: false,
+      );
       expect(result.added, 3);
 
       final all = await items();
@@ -105,9 +109,12 @@ void main() {
     });
 
     test('пересмотр', () async {
-      await library.importRates([
-        const UserRate(anime: frieren, status: 'rewatching', episodes: 4),
-      ], replace: false);
+      await library.importItems(
+        shikimoriItems([
+          const UserRate(anime: frieren, status: 'rewatching', episodes: 4),
+        ]),
+        replace: false,
+      );
       final history = await library.watchHistory(52991).first;
       expect(history.map((cycle) => cycle.cycle.state), [
         'completed',
@@ -120,18 +127,24 @@ void main() {
       await library.add(ongoing, StatusAction.watching);
       await library.toggleEpisode(1, 1);
 
-      final skip = await library.importRates([
-        const UserRate(anime: ongoing, status: 'dropped', episodes: 2),
-        const UserRate(anime: other, status: 'planned'),
-      ], replace: false);
+      final skip = await library.importItems(
+        shikimoriItems([
+          const UserRate(anime: ongoing, status: 'dropped', episodes: 2),
+          const UserRate(anime: other, status: 'planned'),
+        ]),
+        replace: false,
+      );
       expect((skip.added, skip.skipped), (1, 1));
       expect((await items())[1]!.status, WatchStatus.watching);
       await skip.undo();
       expect((await items()).keys, [1]);
 
-      final replace = await library.importRates([
-        const UserRate(anime: ongoing, status: 'dropped', episodes: 2),
-      ], replace: true);
+      final replace = await library.importItems(
+        shikimoriItems([
+          const UserRate(anime: ongoing, status: 'dropped', episodes: 2),
+        ]),
+        replace: true,
+      );
       expect(replace.replaced, 1);
       var item = (await items())[1]!;
       expect(item.status, WatchStatus.dropped);

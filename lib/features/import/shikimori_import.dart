@@ -8,6 +8,7 @@ import '../../core/labels.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/toast.dart';
 import '../../data/database/watch_status.dart';
+import '../../data/import/shikimori_plan.dart';
 import '../../data/providers.dart';
 import '../../data/shikimori/shikimori_client.dart';
 import '../../data/shikimori/user_rate.dart';
@@ -99,7 +100,7 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
     try {
       final result = await ref
           .read(libraryRepositoryProvider)
-          .importRates(_rates, replace: _replace);
+          .importItems(shikimoriItems(_rates), replace: _replace);
       if (!mounted) return;
       Navigator.of(context).pop();
       toast.show(

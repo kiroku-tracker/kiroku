@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:drift/drift.dart';
 
 import '../shikimori/anime_info.dart';
-import '../shikimori/user_rate.dart';
+import '../import/import_plan.dart';
 import 'app_database.dart';
 import 'settings_repository.dart';
 import 'status_action.dart';
@@ -862,9 +862,9 @@ class LibraryRepository {
     );
   }
 
-  /// Импорт списка Shikimori.
-  Future<ImportResult> importRates(
-    List<UserRate> rates, {
+  /// Перенос тайтлов из чужого списка.
+  Future<ImportResult> importItems(
+    List<ImportItem> items, {
     required bool replace,
   }) async {
     final snapshots = <int, _Snapshot>{};
@@ -872,8 +872,10 @@ class LibraryRepository {
     var replaced = 0;
     var skipped = 0;
     await _db.transaction(() async {
-      for (final rate in rates) {
-        final animeId = rate.anime.id;
+      for (final item in items) {
+        final info = item.anime;
+        if (info == null) continue;
+        final animeId = info.id;
         if (snapshots.containsKey(animeId)) continue;
         final snapshot = await _snapshot(animeId);
         final existing = snapshot.entry;
@@ -883,7 +885,7 @@ class LibraryRepository {
           continue;
         }
         snapshots[animeId] = snapshot;
-        await saveAnime(rate.anime);
+        await saveAnime(info);
         final now = DateTime.now();
 
         if (existing != null) {
@@ -901,20 +903,21 @@ class LibraryRepository {
         }
 
         final entryId = existing?.id ?? newId();
-        final note = rate.text?.trim() ?? '';
+        final note = item.note.trim();
         await _db
             .into(_db.libraryEntries)
             .insertOnConflictUpdate(
               LibraryEntriesCompanion(
                 id: Value(entryId),
                 animeId: Value(animeId),
-                status: Value(rate.watchStatus.name),
-                score: Value(rate.score > 0 ? rate.score : existing?.score),
+                status: Value(item.status.name),
+                score: Value(item.score > 0 ? item.score : existing?.score),
                 note: Value(note.isNotEmpty ? note : existing?.note ?? ''),
+                favorite: Value(item.favorite || (existing?.favorite ?? false)),
                 addedAt: Value(
-                  active ? existing.addedAt : rate.createdAt ?? now,
+                  active ? existing.addedAt : item.createdAt ?? now,
                 ),
-                updatedAt: Value(rate.updatedAt ?? now),
+                updatedAt: Value(item.updatedAt ?? now),
                 deletedAt: const Value(null),
               ),
             );
@@ -922,24 +925,25 @@ class LibraryRepository {
         var number = snapshot.cycles.fold(0, (top, c) => max(top, c.number));
         final cycles = <WatchCyclesCompanion>[];
         final events = <WatchEventsCompanion>[];
-        void addCycle(String state, int episodes) {
+        for (final viewing in item.viewings) {
           final cycleId = newId();
           cycles.add(
             WatchCyclesCompanion.insert(
               id: cycleId,
               entryId: entryId,
               number: ++number,
-              state: state,
+              state: viewing.completed ? 'completed' : 'active',
               updatedAt: now,
             ),
           );
-          for (var episode = 1; episode <= episodes; episode++) {
+          for (final episode in viewing.episodes) {
             events.add(
               WatchEventsCompanion.insert(
                 id: newId(),
                 cycleId: cycleId,
-                episode: episode,
-                markedAt: now,
+                episode: episode.number,
+                markedAt: episode.at ?? now,
+                watchedAt: Value(episode.at),
                 bulk: const Value(true),
                 source: const Value('import'),
                 updatedAt: now,
@@ -947,11 +951,6 @@ class LibraryRepository {
             );
           }
         }
-
-        for (var i = 0; i < rate.completedViewings; i++) {
-          addCycle('completed', rate.completedEpisodes);
-        }
-        if (rate.currentEpisodes > 0) addCycle('active', rate.currentEpisodes);
         await _db.batch((batch) {
           batch.insertAll(_db.watchCycles, cycles);
           batch.insertAll(_db.watchEvents, events);
