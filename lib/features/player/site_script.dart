@@ -181,6 +181,13 @@ const siteScript = r'''
   }
 
   if (top) {
+    // Сайт через секунду после стрелок снимает фокус с плеера Alloha, и
+    // каждое второе нажатие уходит странице. Фокус в Alloha не снимаем.
+    var frameBlur = HTMLIFrameElement.prototype.blur;
+    HTMLIFrameElement.prototype.blur = function () {
+      if (/alloha/.test(this.src)) return;
+      return frameBlur.apply(this, arguments);
+    };
     window.addEventListener('message', function (e) {
       if (e.data && (e.data.kiroku === 1 || e.data.kiroku === 6 ||
           e.data.kiroku === 7)) send(e.data);
