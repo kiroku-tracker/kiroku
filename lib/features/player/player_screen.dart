@@ -69,7 +69,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                         SiteControls(
                           animeId: session.animeId!,
                           catalog: session.catalog!,
-                          choice: session.site,
+                          choice: session.site.episode == null
+                              ? (
+                                  dubbing: session.site.dubbing,
+                                  player: session.site.player,
+                                  episode: session.episode,
+                                )
+                              : session.site,
                           onChoose: session.choose,
                           width: _videoWidth(constraints),
                         ),
@@ -165,6 +171,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                       color: AppColors.background,
                       child: Center(child: CircularProgressIndicator()),
                     ),
+                  )
+                else if (session.stalled && session.focus)
+                  Positioned.fill(
+                    child: PlayerStalled(onReload: session.reload),
                   ),
               ],
             ),
@@ -207,7 +217,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           const SizedBox(width: 4),
           IconButton(
             tooltip: 'Обновить',
-            onPressed: session.ready ? session.controller.reload : null,
+            onPressed: session.ready ? session.reload : null,
             icon: const Icon(LucideIcons.refreshCw, size: 18),
           ),
           const SizedBox(width: 4),
@@ -218,6 +228,47 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               mode: LaunchMode.externalApplication,
             ),
             icon: const Icon(LucideIcons.externalLink, size: 18),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Вместо всей страницы сайта, если плеер долго не появляется. Пропадает
+/// сам, как только плеер загрузится.
+class PlayerStalled extends StatelessWidget {
+  const PlayerStalled({super.key, required this.onReload});
+
+  final VoidCallback onReload;
+
+  @override
+  Widget build(BuildContext context) {
+    // Крутилка на том же месте, что и у заглушки загрузки.
+    return ColoredBox(
+      color: AppColors.background,
+      child: Stack(
+        children: [
+          const Center(child: CircularProgressIndicator()),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 150),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Плеер долго загружается',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    onPressed: onReload,
+                    icon: const Icon(LucideIcons.refreshCw, size: 16),
+                    label: const Text('Обновить'),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),

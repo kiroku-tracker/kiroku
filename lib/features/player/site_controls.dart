@@ -169,7 +169,11 @@ class _EpisodeStripState extends State<_EpisodeStrip> {
         final room = width - 2 * (_arrow + _gap);
         final count = max(1, _fit(room));
         final last = episodes.length - count;
-        final playing = episodes.indexOf(widget.playing ?? -1);
+        // Пока серия неизвестна, ряд стоит на первой непросмотренной.
+        var playing = episodes.indexOf(widget.playing ?? -1);
+        if (playing < 0) {
+          playing = episodes.indexWhere((e) => !widget.watched.contains(e));
+        }
         final start = (_start ?? (playing < 0 ? 0 : playing - 2))
             .clamp(0, last)
             .toInt();
@@ -243,24 +247,21 @@ class _Arrow extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: AppColors.secondaryButton,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-          side: const BorderSide(color: AppColors.secondaryButtonBorder),
-        ),
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(8),
-          hoverColor: Colors.white.withValues(alpha: 0.06),
+          hoverColor: AppColors.secondaryButtonHover,
           child: SizedBox(
             width: 34,
             height: 34,
             child: Icon(
               icon,
-              size: 16,
+              size: 18,
               color: onTap != null
-                  ? AppColors.secondaryButtonText
-                  : AppColors.secondaryButtonText.withValues(alpha: 0.3),
+                  ? AppColors.navIdle
+                  : AppColors.navIdle.withValues(alpha: 0.25),
             ),
           ),
         ),

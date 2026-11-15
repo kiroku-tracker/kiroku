@@ -82,6 +82,10 @@ class PlayerSession extends ChangeNotifier {
   String? error;
   bool focus = true;
   bool cover = true;
+
+  /// Плеер на странице тайтла долго не появляется: вместо всего сайта
+  /// показывается «Плеер долго загружается».
+  bool stalled = false;
   bool started = false;
   bool fullScreen = false;
   bool playing = false;
@@ -123,6 +127,7 @@ class PlayerSession extends ChangeNotifier {
   bool _chosen = false;
   bool _closed = false;
   Timer? _coverTimer;
+  Timer? _revealTimer;
   Timer? _cursorTimer;
   Timer? _idleTimer;
   String? _videoFrame;
@@ -251,16 +256,26 @@ class PlayerSession extends ChangeNotifier {
   }
 
   /// Закрывает страницу фоном, пока сайт не приведён к виду «только
-  /// плеер» (не дольше 8 секунд).
+  /// плеер» (не дольше 20 секунд).
   void _holdCover() {
     if (_closed) return;
     _coverTimer?.cancel();
+    _revealTimer?.cancel();
+    _revealTimer = null;
     cover = true;
+    stalled = false;
     _notify();
-    _coverTimer = Timer(const Duration(seconds: 8), () {
+    _coverTimer = Timer(const Duration(seconds: 20), () {
       cover = false;
+      stalled = focus && _ownPage;
       _notify();
     });
+  }
+
+  /// Перезагружает страницу, закрыв её фоном до появления плеера.
+  void reload() {
+    if (focus) _holdCover();
+    unawaited(controller.reload());
   }
 
   /// Переключает «только плеер» и всю страницу сайта.
@@ -348,6 +363,7 @@ class PlayerSession extends ChangeNotifier {
     final ownPage = message['path'] == uri.path;
     if (ownPage != _ownPage) {
       _ownPage = ownPage;
+      if (!ownPage) stalled = false;
       _notify();
     }
     final modes = message['modes'];
@@ -357,10 +373,18 @@ class PlayerSession extends ChangeNotifier {
         (sentAt == null || DateTime.now().difference(sentAt).inSeconds >= 1)) {
       unawaited(_sendModes());
     }
-    if (cover && synced && message['ready'] == true) {
+    if ((cover || stalled) &&
+        synced &&
+        message['ready'] == true &&
+        _revealTimer == null) {
       _coverTimer?.cancel();
-      cover = false;
-      _notify();
+      // Пауза, чтобы страница успела перерисоваться в «только плеер».
+      _revealTimer = Timer(const Duration(milliseconds: 200), () {
+        _revealTimer = null;
+        cover = false;
+        stalled = false;
+        _notify();
+      });
     }
     final site = (
       dubbing: message['dubbing'] as String? ?? this.site.dubbing,
@@ -488,6 +512,7 @@ class PlayerSession extends ChangeNotifier {
     _cursorTimer?.cancel();
     _idleTimer?.cancel();
     _coverTimer?.cancel();
+    _revealTimer?.cancel();
     _marker.reportEmbedded(null);
     unawaited(_events.close());
     unawaited(controller.dispose());

@@ -331,7 +331,8 @@ const siteScript = r'''
         player: current(playerLabel),
         episode: match ? Number(match[1]) : null,
         modes: [focus, native, miniMode, hideSpoilers],
-        ready: !focus || focused ||
+        ready: !focus ||
+          (focused && !!section.querySelector('[data-kiroku-player]')) ||
           location.pathname.indexOf('/catalog/item/') !== 0
       });
     }
@@ -344,8 +345,9 @@ const siteScript = r'''
         document.documentElement.classList.remove('kiroku-focus');
         focused = false;
         if (focus && /^\/catalog\/item\//.test(location.pathname)) {
+          // Плеер на сайте подгружается, только когда блок виден.
           var heading = Array.prototype.find.call(
-            document.querySelectorAll('[role=button] h2'),
+            document.querySelectorAll('h2'),
             function (h) { return /Смотреть аниме/i.test(h.textContent); });
           if (heading) heading.scrollIntoView({ block: 'start' });
         }
