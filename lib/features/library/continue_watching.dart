@@ -54,7 +54,7 @@ class _ContinueCard extends ConsumerWidget {
     final release = anime.release;
     final status = release.isOngoing
         ? (left == 1 ? 'Вышла новая серия' : 'Вышло новых: $left')
-        : 'Осталось ${episodesLabel(left)}';
+        : episodesLeftLabel(left);
 
     return SizedBox(
       width: 340,

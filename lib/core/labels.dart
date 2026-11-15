@@ -34,6 +34,11 @@ String plural(int count, String one, String few, String many) {
   return many;
 }
 
+/// «Осталось 5 серий», «Осталась 1 серия».
+String episodesLeftLabel(int count) =>
+    '${plural(count, 'Осталась', 'Осталось', 'Осталось')} '
+    '${episodesLabel(count)}';
+
 /// Число серий словами.
 String episodesLabel(int count) =>
     '$count ${plural(count, 'серия', 'серии', 'серий')}';

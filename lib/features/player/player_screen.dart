@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -60,33 +61,58 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           body: Column(
             children: [
               if (!fullScreen) _topBar(session),
-              if (!fullScreen && session.focus && session.native)
-                SiteControls(
-                  animeId: session.animeId!,
-                  catalog: session.catalog!,
-                  choice: session.site,
-                  onChoose: session.choose,
-                ),
               Expanded(
-                child: error != null
-                    ? Center(
-                        child: Text(
-                          'Встроенный просмотр недоступен: $error',
-                          style: const TextStyle(color: AppColors.muted),
+                child: LayoutBuilder(
+                  builder: (context, constraints) => Column(
+                    children: [
+                      if (!fullScreen && session.focus && session.native)
+                        SiteControls(
+                          animeId: session.animeId!,
+                          catalog: session.catalog!,
+                          choice: session.site,
+                          onChoose: session.choose,
+                          width: _videoWidth(constraints),
                         ),
-                      )
-                    : session.ready && visible
-                    ? LayoutBuilder(
-                        builder: (context, constraints) =>
-                            _view(session, constraints, framed: !fullScreen),
-                      )
-                    : const Center(child: CircularProgressIndicator()),
+                      Expanded(
+                        child: _body(session, error, visible, fullScreen),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
         );
       },
     );
+  }
+
+  /// Ширина видео в рамке 16:9 под строкой выбора серии.
+  double _videoWidth(BoxConstraints constraints) {
+    const padding = 16.0;
+    final height = constraints.maxHeight - SiteControls.height - padding;
+    return min(constraints.maxWidth - padding * 2, height * 16 / 9);
+  }
+
+  Widget _body(
+    PlayerSession session,
+    String? error,
+    bool visible,
+    bool fullScreen,
+  ) {
+    return error != null
+        ? Center(
+            child: Text(
+              'Встроенный просмотр недоступен: $error',
+              style: const TextStyle(color: AppColors.muted),
+            ),
+          )
+        : session.ready && visible
+        ? LayoutBuilder(
+            builder: (context, constraints) =>
+                _view(session, constraints, framed: !fullScreen),
+          )
+        : const Center(child: CircularProgressIndicator());
   }
 
   /// Сайт с отступами и скруглением; «только плеер» в пропорциях 16:9.

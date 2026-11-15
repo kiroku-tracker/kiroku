@@ -8,11 +8,15 @@ class Panel extends StatelessWidget {
     super.key,
     required this.title,
     required this.child,
+    this.note,
     this.trailing,
   });
 
   final String title;
   final Widget child;
+
+  /// Серая подпись справа от заголовка.
+  final String? note;
 
   final Widget? trailing;
 
@@ -32,9 +36,26 @@ class Panel extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleLarge,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(title, style: Theme.of(context).textTheme.titleLarge),
+                    if (note case final note?) ...[
+                      const SizedBox(width: 12),
+                      Flexible(
+                        child: Text(
+                          note,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               ?trailing,

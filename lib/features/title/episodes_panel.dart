@@ -91,6 +91,29 @@ class _EpisodesPanelState extends ConsumerState<EpisodesPanel> {
     return episode;
   }
 
+  /// Вышедшие серии, не отмеченные в текущем просмотре.
+  int get _left {
+    final aired = widget.anime.release.availableEpisodes;
+    var left = 0;
+    for (var episode = 1; episode <= aired; episode++) {
+      if (!_events.containsKey(episode)) left++;
+    }
+    return left;
+  }
+
+  /// Сколько серий диапазона вышло и сколько из них просмотрено.
+  ({int aired, int watched}) _rangeProgress(int from, int to) {
+    final release = widget.anime.release;
+    var aired = 0;
+    var watched = 0;
+    for (var episode = from; episode <= to; episode++) {
+      if (release.isUnaired(episode)) continue;
+      aired++;
+      if (_events.containsKey(episode)) watched++;
+    }
+    return (aired: aired, watched: watched);
+  }
+
   Set<int> get _previouslyWatched => {
     for (final cycle in widget.history)
       if (cycle != _current) ...cycle.events.keys,
@@ -106,9 +129,11 @@ class _EpisodesPanelState extends ConsumerState<EpisodesPanel> {
         .toInt();
     final from = rangeIndex * _rangeSize + 1;
     final to = min(from + _rangeSize - 1, total);
+    final left = _isCurrent ? _left : 0;
 
     return Panel(
       title: 'Серии',
+      note: left > 0 ? episodesLeftLabel(left) : null,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -158,12 +183,7 @@ class _EpisodesPanelState extends ConsumerState<EpisodesPanel> {
                 runSpacing: 6,
                 children: [
                   for (var index = 0; index < ranges; index++)
-                    _RangeChip(
-                      label:
-                          '${index * _rangeSize + 1}–${min((index + 1) * _rangeSize, total)}',
-                      active: index == rangeIndex,
-                      onTap: () => setState(() => _rangeIndex = index),
-                    ),
+                    _rangeChip(index, total, active: index == rangeIndex),
                 ],
               ),
               const SizedBox(height: 14),
@@ -186,6 +206,19 @@ class _EpisodesPanelState extends ConsumerState<EpisodesPanel> {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _rangeChip(int index, int total, {required bool active}) {
+    final from = index * _rangeSize + 1;
+    final to = min((index + 1) * _rangeSize, total);
+    final progress = _rangeProgress(from, to);
+    return _RangeChip(
+      label: '$from–$to',
+      active: active,
+      aired: progress.aired,
+      watched: progress.watched,
+      onTap: () => setState(() => _rangeIndex = index),
     );
   }
 
@@ -679,38 +712,101 @@ class _DashedBorder extends CustomPainter {
       oldDelegate.color != color;
 }
 
+/// Вкладка диапазона: закрашена, если всё вышедшее просмотрено,
+/// с полоской, если просмотрена часть, с пунктиром, если ничего не вышло.
 class _RangeChip extends StatelessWidget {
   const _RangeChip({
     required this.label,
     required this.active,
+    required this.aired,
+    required this.watched,
     required this.onTap,
   });
 
   final String label;
   final bool active;
+  final int aired;
+  final int watched;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: active ? const Color(0xFF3B2F78) : const Color(0xFF222027),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(
-          color: active ? AppColors.progress : const Color(0xFF393640),
+    final unaired = aired == 0;
+    final full = !unaired && watched >= aired;
+    final partial = !unaired && watched > 0 && !full;
+    final border = active
+        ? const BorderSide(color: Color(0xFFE2DAFF), width: 2)
+        : unaired
+        ? BorderSide.none
+        : BorderSide(
+            color: full ? const Color(0xFF755FE4) : const Color(0xFF393640),
+          );
+    final textColor = full || active
+        ? Colors.white
+        : unaired
+        ? const Color(0xFF9E97A7)
+        : AppColors.navIdle;
+
+    return CustomPaint(
+      foregroundPainter: unaired && !active
+          ? _DashedBorder(color: const Color(0xFF6B6177))
+          : null,
+      child: Material(
+        color: full ? const Color(0xFF4D3CA0) : const Color(0xFF222027),
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: border,
+        ),
+        child: InkWell(
+          onTap: onTap,
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
+                ),
+                child: Text(
+                  label,
+                  style: TextStyle(color: textColor, fontSize: 13),
+                ),
+              ),
+              if (partial)
+                Positioned(
+                  left: 6,
+                  right: 6,
+                  bottom: 3,
+                  child: _RangeBar(share: watched / aired),
+                ),
+            ],
+          ),
         ),
       ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: active ? Colors.white : AppColors.navIdle,
-              fontSize: 13,
-            ),
+    );
+  }
+}
+
+class _RangeBar extends StatelessWidget {
+  const _RangeBar({required this.share});
+
+  final double share;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 3,
+      alignment: Alignment.centerLeft,
+      decoration: BoxDecoration(
+        color: const Color(0xFF34313C),
+        borderRadius: BorderRadius.circular(2),
+      ),
+      child: FractionallySizedBox(
+        widthFactor: share,
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF8B78F0),
+            borderRadius: BorderRadius.circular(2),
           ),
         ),
       ),
