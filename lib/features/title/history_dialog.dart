@@ -4,30 +4,163 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/labels.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/widgets/panel.dart';
+import '../../core/widgets/status_menu.dart';
 import '../../data/database/app_database.dart';
 import '../../data/database/library_repository.dart';
+import '../../data/database/watch_status.dart';
+import '../../data/providers.dart';
 import '../library/library_actions.dart';
+import 'views_menu.dart';
 
-class HistoryPanel extends ConsumerWidget {
-  const HistoryPanel({
-    super.key,
+/// Пункт «⋯» с окном истории и числа просмотров тайтла.
+Widget historyMenuItem(
+  BuildContext context, {
+  required Anime anime,
+  required String? selectedCycleId,
+  required ValueChanged<String?> onSelect,
+}) {
+  return AppMenuItem(
+    label: 'История просмотров…',
+    icon: LucideIcons.history,
+    color: AppColors.menuItemText,
+    onPressed: () => showDialog<void>(
+      context: context,
+      builder: (_) => _HistoryDialog(
+        anime: anime,
+        selectedCycleId: selectedCycleId,
+        onSelect: onSelect,
+      ),
+    ),
+  );
+}
+
+/// Просмотры тайтла: сколько раз просмотрен целиком и список просмотров.
+/// Клик по просмотру открывает его отметки в блоке «Серии».
+class _HistoryDialog extends ConsumerWidget {
+  const _HistoryDialog({
     required this.anime,
-    required this.history,
-    required this.viewing,
     required this.selectedCycleId,
     required this.onSelect,
   });
 
   final Anime anime;
-  final List<CycleHistory> history;
-  final CurrentViewing viewing;
   final String? selectedCycleId;
-
   final ValueChanged<String?> onSelect;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final entry = ref.watch(libraryEntryProvider(anime.id)).value;
+    final history =
+        ref.watch(titleHistoryProvider(anime.id)).value ??
+        const <CycleHistory>[];
+    final views = ref.watch(viewsProvider).value?[anime.id];
+    final status = entry == null
+        ? WatchStatus.planned
+        : WatchStatus.fromName(entry.status);
+    final viewing = CurrentViewing.of(history, status);
+    final library = ref.read(libraryRepositoryProvider);
+    final count = views?.views ?? 0;
+    final removable = views?.removable ?? 0;
+
+    void select(String? id) {
+      onSelect(id);
+      Navigator.of(context).pop();
+    }
+
+    final rows = _rows(ref, history, viewing, select);
+    return AlertDialog(
+      title: const Text('История просмотров'),
+      content: SizedBox(
+        width: 520,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              height: 38,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Expanded(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Сколько раз тайтл просмотрен целиком',
+                        style: TextStyle(color: AppColors.textSecondary),
+                      ),
+                    ),
+                  ),
+                  StepButton(
+                    icon: LucideIcons.minus,
+                    tooltip: 'Меньше',
+                    onPressed: removable > 0
+                        ? () => library.removeView(anime.id)
+                        : null,
+                  ),
+                  SizedBox(
+                    width: 48,
+                    child: Center(
+                      child: Text(
+                        '$count',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                  StepButton(
+                    icon: LucideIcons.plus,
+                    tooltip: 'Больше',
+                    onPressed: count < 999
+                        ? () => library.addView(anime.id)
+                        : null,
+                  ),
+                ],
+              ),
+            ),
+            if (removable == 0 && count > 1) ...[
+              const SizedBox(height: 6),
+              const Text(
+                'Просмотры с датами удаляются корзиной в списке',
+                style: TextStyle(color: AppColors.muted, fontSize: 13),
+              ),
+            ],
+            if (rows.isNotEmpty) ...[
+              const SizedBox(height: 18),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      for (final row in rows)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: row,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Готово'),
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _rows(
+    WidgetRef ref,
+    List<CycleHistory> history,
+    CurrentViewing viewing,
+    ValueChanged<String?> onSelect,
+  ) {
+    if (history.isEmpty) return const [];
     final total = anime.release.availableEpisodes;
     final rows = <Widget>[
       if (viewing.cycle == null)
@@ -52,7 +185,9 @@ class HistoryPanel extends ConsumerWidget {
             history[index] == viewing.cycle ? null : history[index].cycle.id,
           ),
           onDelete: () {
-            if (history[index].cycle.id == selectedCycleId) onSelect(null);
+            if (history[index].cycle.id == selectedCycleId) {
+              this.onSelect(null);
+            }
             deleteViewing(
               ref,
               animeId: anime.id,
@@ -62,15 +197,7 @@ class HistoryPanel extends ConsumerWidget {
           },
         ),
     ];
-    return Panel(
-      title: 'История просмотров',
-      child: Column(
-        children: [
-          for (final row in rows)
-            Padding(padding: const EdgeInsets.only(bottom: 8), child: row),
-        ],
-      ),
-    );
+    return rows;
   }
 }
 

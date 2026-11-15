@@ -35,10 +35,9 @@ import '../notifications/alerts_button.dart';
 import '../notifications/site_line.dart';
 import '../watch/watch_button.dart';
 import '../watch/watch_next_button.dart';
-import 'views_menu.dart';
 import '../welcome/one_time_tip.dart';
 import 'episodes_panel.dart';
-import 'history_panel.dart';
+import 'history_dialog.dart';
 import 'note_panel.dart';
 
 /// Открывает страницу тайтла.
@@ -132,9 +131,6 @@ class _TitleScreenState extends ConsumerState<TitleScreen> {
         : null;
     final canRestart =
         current != null && current.events.isNotEmpty && !current.isCompleted;
-    final showHistory =
-        history.length > 1 ||
-        (history.length == 1 && (history.first.isCompleted || current == null));
 
     const gap = SizedBox(height: 18);
     return SingleChildScrollView(
@@ -176,7 +172,9 @@ class _TitleScreenState extends ConsumerState<TitleScreen> {
                   anime: anime,
                   entry: entry,
                   canRestart: canRestart,
-                  views: ref.watch(viewsProvider).value?[anime.id],
+                  hasHistory: history.isNotEmpty,
+                  selectedCycleId: selectedId,
+                  onSelectCycle: (id) => setState(() => _selectedCycleId = id),
                   markNext: entry == null
                       ? null
                       : _markable(anime, viewing.events.keys.toSet()),
@@ -198,16 +196,6 @@ class _TitleScreenState extends ConsumerState<TitleScreen> {
                 onShowCurrent: () => setState(() => _selectedCycleId = null),
               ),
               gap,
-              if (showHistory) ...[
-                HistoryPanel(
-                  anime: anime,
-                  history: history,
-                  viewing: viewing,
-                  selectedCycleId: selectedId,
-                  onSelect: (id) => setState(() => _selectedCycleId = id),
-                ),
-                gap,
-              ],
             ],
             if (_franchiseKey(anime, entry) case final key?) ...[
               TitleFranchisePanel(
@@ -477,8 +465,10 @@ class _MoreMenu extends ConsumerWidget {
     required this.anime,
     required this.entry,
     required this.canRestart,
+    required this.hasHistory,
+    required this.selectedCycleId,
+    required this.onSelectCycle,
     this.markNext,
-    this.views,
   });
 
   final Anime anime;
@@ -489,8 +479,11 @@ class _MoreMenu extends ConsumerWidget {
 
   final int? markNext;
 
-  /// Число просмотров, если тайтл просмотрен хотя бы раз.
-  final ({int views, int removable})? views;
+  /// У тайтла есть хотя бы один просмотр.
+  final bool hasHistory;
+
+  final String? selectedCycleId;
+  final ValueChanged<String?> onSelectCycle;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -508,8 +501,13 @@ class _MoreMenu extends ConsumerWidget {
             onPressed: () =>
                 markNextEpisode(ref, animeId: anime.id, title: anime.title),
           ),
-        if (views case final views?)
-          viewsMenuItem(context, ref, parts: {anime.id: views}),
+        if (hasHistory)
+          historyMenuItem(
+            context,
+            anime: anime,
+            selectedCycleId: selectedCycleId,
+            onSelect: onSelectCycle,
+          ),
         AppMenuItem(
           label: 'Открыть на Shikimori',
           icon: LucideIcons.externalLink,

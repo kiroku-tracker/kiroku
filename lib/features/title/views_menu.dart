@@ -86,7 +86,7 @@ Future<void> _ask(
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _StepButton(
+                      StepButton(
                         icon: LucideIcons.minus,
                         tooltip: 'Меньше',
                         onPressed: current > minimum
@@ -109,7 +109,7 @@ Future<void> _ask(
                         ),
                       ),
                       const SizedBox(width: 8),
-                      _StepButton(
+                      StepButton(
                         icon: LucideIcons.plus,
                         tooltip: 'Больше',
                         onPressed: current < 999
@@ -169,8 +169,9 @@ Future<void> _ask(
 }
 
 /// Кнопка «−» или «+» рядом с полем числа.
-class _StepButton extends StatelessWidget {
-  const _StepButton({
+class StepButton extends StatelessWidget {
+  const StepButton({
+    super.key,
     required this.icon,
     required this.tooltip,
     required this.onPressed,
