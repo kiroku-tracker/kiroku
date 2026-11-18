@@ -40,8 +40,10 @@ class _OneTimeTipState extends ConsumerState<OneTimeTip> {
   final _link = LayerLink();
   late final TipsNotifier _tips;
 
-  /// Подсказка была на экране при последней сборке.
-  bool _shown = false;
+  /// Подсказку показал этот экземпляр. Подсказка с тем же id может стоять
+  /// на другом экране (тайтл открыт в двух разделах), и убирать её может
+  /// только тот, кто показал, иначе они перехватывают её по кругу.
+  bool _owner = false;
 
   @override
   void initState() {
@@ -54,7 +56,7 @@ class _OneTimeTipState extends ConsumerState<OneTimeTip> {
 
   @override
   void dispose() {
-    if (_shown) {
+    if (_owner) {
       final id = widget.id;
       final tips = _tips;
       scheduleMicrotask(() => tips.release(id));
@@ -85,14 +87,16 @@ class _OneTimeTipState extends ConsumerState<OneTimeTip> {
         tips != null &&
         !tips.seen.contains(widget.id) &&
         _onScreen(context);
-    final active = tips?.active == widget.id;
+    if (tips?.active != widget.id) _owner = false;
     if (eligible && tips.active == null) {
-      _later(() => _tips.request(widget.id));
-    } else if (!eligible && active) {
-      _later(() => _tips.release(widget.id));
+      _later(() => _owner = _tips.request(widget.id) || _owner);
+    } else if (!eligible && _owner) {
+      _later(() {
+        _owner = false;
+        _tips.release(widget.id);
+      });
     }
-    final show = eligible && active;
-    _shown = active;
+    final show = eligible && _owner;
     return CompositedTransformTarget(
       link: _link,
       child: OverlayPortal(

@@ -111,15 +111,17 @@ class TipsNotifier extends AsyncNotifier<TipsState> {
     );
   }
 
-  /// Показывает подсказку, если сейчас не видна другая.
-  void request(String id) {
+  /// Показывает подсказку, если сейчас не видна другая. Возвращает,
+  /// показана ли она.
+  bool request(String id) {
     final current = state.value;
     if (current == null ||
         current.active != null ||
         current.seen.contains(id)) {
-      return;
+      return false;
     }
     state = AsyncData((seen: current.seen, active: id));
+    return true;
   }
 
   /// Убирает подсказку с экрана, не отмечая прочитанной.

@@ -21,12 +21,30 @@ class InteractiveCard extends StatefulWidget {
 
 class _InteractiveCardState extends State<InteractiveCard> {
   bool _hovered = false;
-  bool _focused = false;
+
+  /// Рамка фокуса только у самой карточки: фокус кнопки или меню внутри
+  /// не считается, иначе после закрытия меню рамка остаётся.
+  final _focusNode = FocusNode();
 
   static const _radius = BorderRadius.all(Radius.circular(14));
 
   @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(_onFocus);
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _onFocus() => setState(() {});
+
+  @override
   Widget build(BuildContext context) {
+    final focused = _focusNode.hasPrimaryFocus;
     return Semantics(
       button: true,
       label: widget.semanticLabel,
@@ -36,20 +54,20 @@ class _InteractiveCardState extends State<InteractiveCard> {
           color: _hovered ? AppColors.cardHover : AppColors.card,
           borderRadius: _radius,
           border: Border.all(
-            color: _focused
+            color: focused
                 ? AppColors.focus
                 : _hovered
                 ? AppColors.cardBorderHover
                 : AppColors.cardBorder,
-            width: _focused ? 2 : 1,
+            width: focused ? 2 : 1,
           ),
         ),
         child: Material(
           type: MaterialType.transparency,
           child: InkWell(
             onTap: widget.onTap,
+            focusNode: _focusNode,
             onHover: (value) => setState(() => _hovered = value),
-            onFocusChange: (value) => setState(() => _focused = value),
             borderRadius: _radius,
             hoverColor: Colors.transparent,
             focusColor: Colors.transparent,
