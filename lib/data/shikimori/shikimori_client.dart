@@ -114,6 +114,9 @@ class ShikimoriClient {
     List<int> ids, {
     bool withRelations = false,
     bool withDetails = false,
+
+    /// Сколько тайтлов уже загружено из всех.
+    void Function(int done, int total)? onProgress,
   }) async {
     final fields = [
       _animeFields,
@@ -122,6 +125,7 @@ class ShikimoriClient {
     ].join(' ');
     final result = <AnimeInfo>[];
     for (var start = 0; start < ids.length; start += 50) {
+      onProgress?.call(start, ids.length);
       final chunk = ids.skip(start).take(50).toList();
       final data = await _graphql(
         'query (\$ids: String!, \$limit: Int!) '

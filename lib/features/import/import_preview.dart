@@ -342,9 +342,9 @@ class _ImportCard extends ConsumerWidget {
                     Poster(url: item.anime?.posterUrl),
                   if (!lost)
                     Positioned(
-                      left: 4,
-                      top: 4,
-                      child: _Tick(
+                      left: 6,
+                      top: 6,
+                      child: ImportTick(
                         value: state.isChecked(index),
                         onChanged: () => controller.toggle(index),
                       ),
@@ -420,26 +420,35 @@ class _ImportCard extends ConsumerWidget {
   );
 }
 
-class _Tick extends StatelessWidget {
-  const _Tick({required this.value, required this.onChanged});
+/// Круглая отметка на постере: переносить тайтл или нет.
+class ImportTick extends StatelessWidget {
+  const ImportTick({super.key, required this.value, required this.onChanged});
 
   final bool value;
   final VoidCallback onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 26,
-      height: 26,
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.6),
-        shape: BoxShape.circle,
-      ),
-      child: Checkbox(
-        value: value,
-        onChanged: (_) => onChanged(),
-        visualDensity: VisualDensity.compact,
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    return Semantics(
+      checked: value,
+      child: Material(
+        color: value ? AppColors.accent : Colors.black.withValues(alpha: 0.45),
+        shape: CircleBorder(
+          side: BorderSide(
+            color: value ? AppColors.accent : Colors.white,
+            width: 2,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onChanged,
+          child: SizedBox.square(
+            dimension: 24,
+            child: value
+                ? const Icon(LucideIcons.check, size: 15, color: Colors.white)
+                : null,
+          ),
+        ),
       ),
     );
   }

@@ -55,18 +55,26 @@ class _FakeAniLibria extends AniLibriaClient {
   Future<String> profileName(String token) async => 'Вася';
 
   @override
-  Future<List<AniLibriaCollectionItem>> collections(String token) async {
+  Future<List<AniLibriaCollectionItem>> collections(
+    String token, {
+    AniLibriaProgress? progress,
+  }) async {
     await gate?.future;
     if (collectionsError != null) throw collectionsError!;
     return collectionItems;
   }
 
   @override
-  Future<List<AniLibriaFavorite>> favorites(String token) async =>
-      favoriteItems;
+  Future<List<AniLibriaFavorite>> favorites(
+    String token, {
+    AniLibriaProgress? progress,
+  }) async => favoriteItems;
 
   @override
-  Future<List<AniLibriaView>> history(String token) async {
+  Future<List<AniLibriaView>> history(
+    String token, {
+    AniLibriaProgress? progress,
+  }) async {
     if (historyError != null) throw historyError!;
     return views;
   }
@@ -153,6 +161,19 @@ void main() {
     final events = await database.select(database.watchEvents).get();
     expect(events.single.watchedAt?.toUtc(), DateTime.utc(2025, 2, 3));
     container.read(toastProvider.notifier).hide();
+  });
+
+  testWidgets('пока ждём ввода, есть подсказка про долгое подтверждение', (
+    tester,
+  ) async {
+    final api = _FakeAniLibria(pendingLogins: 100);
+    await _open(tester, api);
+    expect(
+      find.text('После ввода AniLibria подтверждает вход до минуты'),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Отмена'));
+    await tester.pump(const Duration(seconds: 1));
   });
 
   testWidgets('код истёк: можно получить новый', (tester) async {
@@ -284,7 +305,7 @@ void main() {
       source: ImportSource.aniLibria,
     );
     await _tick(tester);
-    expect(find.text('Загружаю коллекции…'), findsOneWidget);
+    expect(find.text('Загружаю списки AniLibria'), findsOneWidget);
     await tester.tap(find.text('Отмена'));
     await tester.pumpAndSettle();
     expect(find.byType(AlertDialog), findsNothing);

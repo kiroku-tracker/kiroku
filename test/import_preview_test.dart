@@ -125,7 +125,7 @@ void main() {
   ) async {
     final container = await _show(tester, items);
     expect(container.read(importControllerProvider)!.toTransfer, 3);
-    await tester.tap(find.byType(Checkbox).first);
+    await tester.tap(find.byType(ImportTick).first);
     await tester.pump();
     expect(container.read(importControllerProvider)!.toTransfer, 2);
     expect(

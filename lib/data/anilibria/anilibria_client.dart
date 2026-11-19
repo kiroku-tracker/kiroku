@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:http/http.dart' as http;
 
@@ -12,6 +13,52 @@ class AniLibriaException implements Exception {
 
   @override
   String toString() => message;
+}
+
+/// Сколько страниц списков загружено из уже известного числа.
+class AniLibriaProgress {
+  AniLibriaProgress([this.onChange]);
+
+  final void Function(int done, int total)? onChange;
+  var _loaded = 0;
+  var _total = 0;
+
+  void _add(int pages) {
+    _total += pages;
+    onChange?.call(_loaded, _total);
+  }
+
+  void _done() {
+    _loaded++;
+    onChange?.call(_loaded, _total);
+  }
+}
+
+/// Ограничение числа одновременных запросов.
+class _Gate {
+  _Gate(this._free);
+
+  int _free;
+  final _waiting = <Completer<void>>[];
+
+  Future<T> run<T>(Future<T> Function() task) async {
+    if (_free > 0) {
+      _free--;
+    } else {
+      final turn = Completer<void>();
+      _waiting.add(turn);
+      await turn.future;
+    }
+    try {
+      return await task();
+    } finally {
+      if (_waiting.isNotEmpty) {
+        _waiting.removeAt(0).complete();
+      } else {
+        _free++;
+      }
+    }
+  }
 }
 
 /// Код для входа на сайте AniLibria.
@@ -99,6 +146,11 @@ class AniLibriaClient {
 
   final http.Client _http;
 
+  /// Не больше четырёх запросов списков одновременно: AniLibria отвечает
+  /// по 2–3 секунды на страницу, по одной загрузка шла минуту.
+  final _gate = _Gate(_waveSize);
+  static const _waveSize = 4;
+
   Uri _uri(String path, [Map<String, String>? query]) =>
       Uri.parse('$baseUrl$path').replace(queryParameters: query);
 
@@ -161,10 +213,12 @@ class AniLibriaClient {
         }),
       ),
     );
-    if (response.statusCode >= 500) {
+    // Пока код не введён на сайте, AniLibria отвечает 500, а не 401,
+    // как написано в её документации.
+    if (response.statusCode >= 400 && response.statusCode <= 500) return null;
+    if (response.statusCode > 500) {
       throw AniLibriaException('AniLibria ответила ${response.statusCode}');
     }
-    if (response.statusCode >= 400) return null;
     final token = (_decode(response) as Map)['token'];
     return token is String && token.isNotEmpty ? token : null;
   }
@@ -182,31 +236,65 @@ class AniLibriaClient {
     return nickname.isNotEmpty ? nickname : '${profile['login'] ?? ''}';
   }
 
-  /// Все страницы списка; обрыв на любой из них — исключение.
-  Future<List<Map<String, dynamic>>> _pages(
+  /// Одна страница списка и сколько всего страниц.
+  Future<({List<Map<String, dynamic>> rows, int total})> _page(
     String path,
-    String token, [
-    Map<String, String> extra = const {},
-  ]) async {
-    final result = <Map<String, dynamic>>[];
-    var page = 1;
-    while (true) {
-      final response = await _send(
+    String token,
+    Map<String, String> extra,
+    int page,
+  ) async {
+    final response = await _gate.run(
+      () => _send(
         () => _http.get(
           _uri(path, {...extra, 'page': '$page', 'limit': '$_pageSize'}),
           headers: _headers(token),
         ),
-      );
-      final body = _decode(response) as Map;
-      final rows = body['data'] as List? ?? const [];
-      for (final item in rows) {
-        result.add((item as Map).cast<String, dynamic>());
+      ),
+    );
+    final body = _decode(response) as Map;
+    final rows = [
+      for (final item in body['data'] as List? ?? const [])
+        (item as Map).cast<String, dynamic>(),
+    ];
+    final pagination = ((body['meta'] as Map?)?['pagination'] as Map?) ?? {};
+    return (rows: rows, total: _int(pagination['total_pages']) ?? page);
+  }
+
+  /// Все страницы списка; обрыв на любой из них — исключение. Первая
+  /// страница сообщает, сколько их всего, остальные грузятся параллельно.
+  Future<List<Map<String, dynamic>>> _pages(
+    String path,
+    String token, {
+    Map<String, String> extra = const {},
+    AniLibriaProgress? progress,
+  }) async {
+    progress?._add(1);
+    final first = await _page(path, token, extra, 1);
+    progress?._done();
+    final total = first.total.clamp(1, _maxPages);
+    if (first.rows.isEmpty || total == 1) return first.rows;
+    progress?._add(total - 1);
+    final result = [...first.rows];
+    // Волнами по четыре: пустая страница значит, что число страниц
+    // в ответе неверное, и дальше грузить нечего.
+    for (var start = 2; start <= total; start += _waveSize) {
+      final wave = await Future.wait([
+        for (
+          var page = start;
+          page <= min(start + _waveSize - 1, total);
+          page++
+        )
+          _page(path, token, extra, page).then((loaded) {
+            progress?._done();
+            return loaded.rows;
+          }),
+      ]);
+      for (final rows in wave) {
+        result.addAll(rows);
       }
-      final pagination = ((body['meta'] as Map?)?['pagination'] as Map?) ?? {};
-      final total = _int(pagination['total_pages']) ?? page;
-      if (rows.isEmpty || page >= total || page >= _maxPages) return result;
-      page++;
+      if (wave.any((rows) => rows.isEmpty)) break;
     }
+    return result;
   }
 
   /// Целое число из числа или строки.
@@ -222,14 +310,22 @@ class AniLibriaClient {
   }
 
   /// Коллекции: пять типов, все страницы.
-  Future<List<AniLibriaCollectionItem>> collections(String token) async {
+  Future<List<AniLibriaCollectionItem>> collections(
+    String token, {
+    AniLibriaProgress? progress,
+  }) async {
+    final lists = await Future.wait([
+      for (final type in collectionTypes)
+        _pages(
+          '/accounts/users/me/collections/releases',
+          token,
+          extra: {'type_of_collection': type},
+          progress: progress,
+        ),
+    ]);
     final result = <AniLibriaCollectionItem>[];
-    for (final type in collectionTypes) {
-      final rows = await _pages(
-        '/accounts/users/me/collections/releases',
-        token,
-        {'type_of_collection': type},
-      );
+    for (final (index, rows) in lists.indexed) {
+      final type = collectionTypes[index];
       for (final release in rows) {
         result.add(
           AniLibriaCollectionItem(
@@ -246,8 +342,15 @@ class AniLibriaClient {
   }
 
   /// Избранное.
-  Future<List<AniLibriaFavorite>> favorites(String token) async {
-    final rows = await _pages('/accounts/users/me/favorites/releases', token);
+  Future<List<AniLibriaFavorite>> favorites(
+    String token, {
+    AniLibriaProgress? progress,
+  }) async {
+    final rows = await _pages(
+      '/accounts/users/me/favorites/releases',
+      token,
+      progress: progress,
+    );
     return [
       for (final release in rows)
         AniLibriaFavorite(
@@ -260,8 +363,15 @@ class AniLibriaClient {
   }
 
   /// История просмотренных серий.
-  Future<List<AniLibriaView>> history(String token) async {
-    final rows = await _pages('/accounts/users/me/views/history', token);
+  Future<List<AniLibriaView>> history(
+    String token, {
+    AniLibriaProgress? progress,
+  }) async {
+    final rows = await _pages(
+      '/accounts/users/me/views/history',
+      token,
+      progress: progress,
+    );
     return [
       for (final row in rows)
         if (row['release_episode'] case final Map episode)

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -93,7 +94,31 @@ void main() {
       }),
     );
     await client.favorites('tok');
-    expect(requests, 2);
+    // Первая страница и одна волна из четырёх, а не все 99.
+    expect(requests, 5);
+  });
+
+  test('страницы грузятся по несколько сразу, порядок сохраняется', () async {
+    var active = 0;
+    var most = 0;
+    final client = AniLibriaClient(
+      httpClient: MockClient((request) async {
+        active++;
+        most = max(most, active);
+        final page = int.parse(request.url.queryParameters['page']!);
+        await Future<void>.delayed(Duration(milliseconds: 20 - page));
+        active--;
+        return _json(_page([_release(page, 50 + page, 'Р$page')], page, 9));
+      }),
+    );
+    final done = <(int, int)>[];
+    final favorites = await client.favorites(
+      'tok',
+      progress: AniLibriaProgress((loaded, total) => done.add((loaded, total))),
+    );
+    expect(favorites.map((f) => f.releaseId), [for (var i = 1; i <= 9; i++) i]);
+    expect(most, 4);
+    expect(done.last, (9, 9));
   });
 
   test('числа-строки в ответе не ломают загрузку', () async {
@@ -129,12 +154,19 @@ void main() {
         httpClient: MockClient((request) async {
           step++;
           if (step == 1) return _json({'message': 'not accepted'}, 422);
-          if (step == 2) return _json({'token': 'abc'});
+          if (step == 2) return http.Response('Server Error', 500);
+          if (step == 3) return _json({'token': 'abc'});
+          if (step == 4) return http.Response('Bad Gateway', 502);
           throw http.ClientException('offline');
         }),
       );
       expect(await client.login('058701', 'dev-1'), isNull);
+      expect(await client.login('058701', 'dev-1'), isNull);
       expect(await client.login('058701', 'dev-1'), 'abc');
+      expect(
+        () => client.login('058701', 'dev-1'),
+        throwsA(isA<AniLibriaException>()),
+      );
       expect(
         () => client.login('058701', 'dev-1'),
         throwsA(isA<AniLibriaException>()),

@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -71,6 +73,10 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
   var _errors = 0;
   var _expired = false;
   var _polling = false;
+  var _progress = 0.0;
+
+  /// Код только что скопирован: вместо значка копирования галочка.
+  Timer? _copied;
 
   @override
   void initState() {
@@ -81,6 +87,7 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
   @override
   void dispose() {
     _timer?.cancel();
+    _copied?.cancel();
     _field.dispose();
     super.dispose();
   }
@@ -166,6 +173,16 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
     }
   }
 
+  void _copyCode(String code) {
+    Clipboard.setData(ClipboardData(text: code));
+    _copied?.cancel();
+    setState(() {
+      _copied = Timer(const Duration(seconds: 2), () {
+        if (mounted) setState(() => _copied = null);
+      });
+    });
+  }
+
   void _failCode(String message) {
     _timer?.cancel();
     if (!mounted) return;
@@ -214,30 +231,48 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
     _expireIfLate();
   }
 
+  /// Доля загрузки: списки AniLibria до 85%, поиск на Shikimori остальное.
+  /// Не уменьшается, когда узнаём о новых страницах.
+  void _setProgress(double value) {
+    if (!mounted || value <= _progress) return;
+    setState(() => _progress = value.clamp(0, 1));
+  }
+
   Future<void> _loadAniLibria(String token) async {
     setState(() {
       _step = _Step.loading;
-      _status = 'Загружаю коллекции…';
+      _status = 'Загружаю списки AniLibria';
+      _progress = 0;
     });
     final api = ref.read(aniLibriaClientProvider);
     final shikimori = ref.read(shikimoriClientProvider);
+    final pages = AniLibriaProgress(
+      (done, total) => _setProgress(0.85 * done / max(total, 1)),
+    );
     try {
-      final collections = await api.collections(token);
+      final lists = await Future.wait<Object>([
+        api.collections(token, progress: pages),
+        api.favorites(token, progress: pages),
+        api.history(token, progress: pages),
+        api.profileName(token),
+      ]);
       if (!mounted) return;
-      setState(() => _status = 'Загружаю избранное…');
-      final favorites = await api.favorites(token);
-      if (!mounted) return;
-      setState(() => _status = 'Загружаю историю просмотров…');
-      final history = await api.history(token);
-      if (!mounted) return;
-      setState(() => _status = 'Ищу тайтлы на Shikimori…');
-      final name = await api.profileName(token);
+      final collections = lists[0] as List<AniLibriaCollectionItem>;
+      final favorites = lists[1] as List<AniLibriaFavorite>;
+      final history = lists[2] as List<AniLibriaView>;
+      final name = lists[3] as String;
+      setState(() => _status = 'Ищу тайтлы на Shikimori');
       final items = await aniLibriaItems(
         collections: collections,
         favorites: favorites,
         history: history,
         lookup: (ids) async => {
-          for (final anime in await shikimori.getAnimes(ids)) anime.id: anime,
+          for (final anime in await shikimori.getAnimes(
+            ids,
+            onProgress: (done, total) =>
+                _setProgress(0.85 + 0.15 * done / max(total, 1)),
+          ))
+            anime.id: anime,
         },
       );
       if (!mounted) return;
@@ -347,14 +382,34 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
     );
   }
 
-  Widget _buildLoading() => Row(
+  Widget _buildLoading() => Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      const SizedBox.square(
-        dimension: 16,
-        child: CircularProgressIndicator(strokeWidth: 2),
+      Row(
+        children: [
+          Expanded(
+            child: Text(
+              _status ?? '',
+              style: const TextStyle(color: AppColors.muted),
+            ),
+          ),
+          Text(
+            '${(_progress * 100).floor()}%',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ],
       ),
-      const SizedBox(width: 10),
-      Text(_status ?? '', style: const TextStyle(color: AppColors.muted)),
+      const SizedBox(height: 10),
+      ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: LinearProgressIndicator(
+          value: _progress,
+          minHeight: 6,
+          color: AppColors.accent,
+          backgroundColor: AppColors.cardBorder,
+        ),
+      ),
     ],
   );
 
@@ -383,18 +438,31 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
         ),
         const SizedBox(height: 18),
         if (otp != null)
-          Center(
-            child: SelectableText(
-              otp.code,
-              style: const TextStyle(
-                fontSize: 34,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 6,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Пустое место слева той же ширины, что кнопка: код по центру.
+              const SizedBox(width: 48),
+              SelectableText(
+                otp.code,
+                style: const TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 6,
+                ),
               ),
-            ),
+              IconButton(
+                onPressed: () => _copyCode(otp.code),
+                tooltip: _copied == null ? 'Скопировать код' : 'Скопировано',
+                icon: Icon(
+                  _copied == null ? LucideIcons.copy : LucideIcons.check,
+                  size: 20,
+                ),
+              ),
+            ],
           ),
         const SizedBox(height: 18),
-        if (otp != null && !_expired)
+        if (otp != null && !_expired) ...[
           const Row(
             children: [
               SizedBox.square(
@@ -408,6 +476,15 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
               ),
             ],
           ),
+          const SizedBox(height: 6),
+          const Padding(
+            padding: EdgeInsets.only(left: 26),
+            child: Text(
+              'После ввода AniLibria подтверждает вход до минуты',
+              style: TextStyle(color: AppColors.muted, fontSize: 12.5),
+            ),
+          ),
+        ],
         if (_expired)
           const Text(
             'Код истёк',

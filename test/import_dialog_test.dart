@@ -5,6 +5,7 @@ import 'package:kiroku/core/toast.dart';
 import 'package:kiroku/data/import/shikimori_plan.dart';
 import 'package:kiroku/data/providers.dart';
 import 'package:kiroku/data/shikimori/user_rate.dart';
+import 'package:kiroku/features/import/import_preview.dart';
 
 import 'import_dialog_helpers.dart';
 
@@ -36,7 +37,7 @@ void main() {
       shikimori: FakeShikimori(user: vasya, rates: rates),
     );
     await findList(tester, 'vasya');
-    await tester.tap(find.byType(Checkbox).first);
+    await tester.tap(find.byType(ImportTick).first);
     await tester.pump();
     expect(find.text('Перенести 1'), findsOneWidget);
     await tester.tap(find.text('Перенести 1'));
@@ -74,7 +75,7 @@ void main() {
     await findList(tester, 'vasya');
     await tester.tap(find.byKey(const ValueKey('plate-existing')));
     await tester.pump();
-    await tester.tap(find.byType(Checkbox).first);
+    await tester.tap(find.byType(ImportTick).first);
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('plate-add')));
     await tester.pump();
@@ -111,7 +112,7 @@ void main() {
     await findList(tester, 'vasya');
     await tester.tap(find.byKey(const ValueKey('plate-existing')));
     await tester.pump();
-    await tester.tap(find.byType(Checkbox).first);
+    await tester.tap(find.byType(ImportTick).first);
     await tester.pump();
     await tester.tap(find.text('Перенести 1'));
     await tester.pumpAndSettle();

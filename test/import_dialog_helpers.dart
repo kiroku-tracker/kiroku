@@ -38,6 +38,7 @@ class FakeShikimori extends ShikimoriClient {
     List<int> ids, {
     bool withRelations = false,
     bool withDetails = false,
+    void Function(int done, int total)? onProgress,
   }) async => [for (final id in ids) infoFor(id)];
 }
 
