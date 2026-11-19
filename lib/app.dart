@@ -94,9 +94,15 @@ class _AppShellState extends ConsumerState<AppShell> {
       if (ref.read(playerSessionProvider)?.exitFullScreen() ?? false) return;
       sectionNavigatorKeys[section]?.currentState?.maybePop();
     }
+
     void open(AppSection section) =>
         ref.read(appSectionProvider.notifier).open(section);
-    return Scaffold(body: ToastHost(child: _shortcuts(back, open)));
+    return Scaffold(
+      body: TickerMode(
+        enabled: ref.watch(windowShownProvider),
+        child: ToastHost(child: _shortcuts(back, open)),
+      ),
+    );
   }
 
   /// Обработка Esc: закрыть меню, убрать курсор из поля или вернуться назад.
@@ -150,10 +156,16 @@ class _AppShellState extends ConsumerState<AppShell> {
                     IndexedStack(
                       index: section.index,
                       children: [
+                        // Анимации только в открытом разделе: значок
+                        // «загружаю ещё» в скрытом поиске крутился
+                        // бесконечно и рисовал 60 кадров в секунду.
                         for (final entry in _sectionRoots.entries)
-                          _SectionNavigator(
-                            navigatorKey: sectionNavigatorKeys[entry.key]!,
-                            root: entry.value,
+                          TickerMode(
+                            enabled: entry.key == section,
+                            child: _SectionNavigator(
+                              navigatorKey: sectionNavigatorKeys[entry.key]!,
+                              root: entry.value,
+                            ),
                           ),
                       ],
                     ),

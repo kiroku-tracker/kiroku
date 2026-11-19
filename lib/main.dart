@@ -33,6 +33,7 @@ Future<void> main(List<String> args) async {
   }
 
   final startHidden = args.contains(Autostart.trayArgument);
+  WindowShown.startHidden = startHidden;
   await windowManager.waitUntilReadyToShow(
     const WindowOptions(
       title: 'Kiroku',

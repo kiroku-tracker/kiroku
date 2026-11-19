@@ -24,6 +24,22 @@ import 'discord_presence.dart';
 import 'notifications.dart';
 import 'updates.dart';
 
+/// Окно на экране: не скрыто в трей и не свёрнуто. Пока окна не видно,
+/// анимации стоят, иначе Kiroku рисует кадры впустую.
+class WindowShown extends Notifier<bool> {
+  /// Окно скрыто с запуска (автозапуск в трей).
+  static var startHidden = false;
+
+  @override
+  bool build() => !startHidden;
+
+  void set(bool value) => state = value;
+}
+
+final windowShownProvider = NotifierProvider<WindowShown, bool>(
+  WindowShown.new,
+);
+
 /// Показывает главное окно.
 Future<void> showMainWindow() async {
   if (await windowManager.isMinimized()) await windowManager.restore();
@@ -206,6 +222,16 @@ class DesktopController with TrayListener, WindowListener {
         _ref.read(autoMarkerProvider).markNowPlaying();
       case _ when key.startsWith('mark:'):
         _ref.read(autoMarkerProvider).handleCommand(key);
+    }
+  }
+
+  @override
+  void onWindowEvent(String eventName) {
+    switch (eventName) {
+      case 'show' || 'restore':
+        _ref.read(windowShownProvider.notifier).set(true);
+      case 'hide' || 'minimize':
+        _ref.read(windowShownProvider.notifier).set(false);
     }
   }
 
